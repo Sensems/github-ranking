@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+frontend/node_modules/
+frontend/.nuxt/
+frontend/dist/
+frontend/.output/
+frontend/app/data/leaderboards/
+deploy/.ssh/
+.superpowers/
