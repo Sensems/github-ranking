@@ -6,7 +6,7 @@
       </div>
     </header>
     <main class="mx-auto max-w-6xl px-4 py-6">
-      <slot />
+      <NuxtPage />
     </main>
     <footer class="border-t border-gray-200 bg-white py-4 text-center text-sm text-gray-500">
       数据来源 GitHub API · 由讯飞星辰 MaaS 提供摘要支持
