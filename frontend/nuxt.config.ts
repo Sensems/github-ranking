@@ -17,4 +17,9 @@ export default defineNuxtConfig({
       siteUrl: process.env.SITE_URL || 'https://github-trend.example.com',
     },
   },
+  nitro: {
+    prerender: {
+      routes: ['/sitemap.xml'],
+    },
+  },
 })

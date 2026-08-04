@@ -14,14 +14,20 @@ useHead({
 <template>
   <div>
     <LeaderboardTabs />
-    <h1 class="mb-4 text-lg font-bold text-gray-900">周增速榜</h1>
+    <div class="mb-2 flex items-baseline justify-between">
+      <h1 class="text-lg font-bold text-gray-900">周增速榜</h1>
+      <span class="text-xs text-gray-400">数据更新于 {{ payload.generated_at }}</span>
+    </div>
     <div class="mb-4 flex flex-wrap items-center gap-2">
       <SearchBox v-model="query" />
       <LanguageFilter v-model="language" :options="languages" />
       <SortSelect v-model="sortBy" />
     </div>
-    <div class="grid gap-4">
+    <div v-if="sorted.length" class="grid gap-4 md:grid-cols-2">
       <RepoCard v-for="item in sorted" :key="item.repo_id" :item="item" board-type="weekly" />
+    </div>
+    <div v-else class="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center text-sm text-gray-400">
+      该榜单暂无数据（历史数据积累中），请明天再来看看。
     </div>
   </div>
 </template>
