@@ -1,0 +1,19 @@
+server {
+    listen 80;
+    server_name github-trend.example.com;
+
+    root /var/www/github-star-trend;
+    index index.html;
+
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|json|png|svg|woff2)$ {
+        expires 1h;
+        add_header Cache-Control "public";
+    }
+}

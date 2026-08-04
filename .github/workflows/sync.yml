@@ -1,0 +1,64 @@
+name: Daily Sync
+on:
+  schedule:
+    - cron: "0 0 * * *"   # UTC 00:00 = 北京时间 08:00
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        run: python scripts/main.py sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          XFYUN_API_KEY: ${{ secrets.XFYUN_API_KEY }}
+          XFYUN_BASE_URL: ${{ secrets.XFYUN_BASE_URL }}
+          XFYUN_MODEL: ${{ secrets.XFYUN_MODEL || 'xsparkx2' }}
+
+      - name: Commit and push data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(data): daily sync $(date -u +%F)"
+            git push origin HEAD
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci --prefix frontend
+
+      - name: Stage leaderboards and build site
+        run: |
+          python scripts/main.py stage
+          npm run generate --prefix frontend
+
+      - name: Deploy to nginx
+        run: bash deploy/deploy.sh
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -s -X POST "${{ secrets.NOTIFY_WEBHOOK }}" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\":\"GitHub Star 趋势榜每日同步失败: $RUN_URL\"}"
