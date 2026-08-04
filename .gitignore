@@ -10,3 +10,4 @@ frontend/app/data/leaderboards/
 deploy/.ssh/
 .superpowers/
 pnpm-lock.yaml
+frontend/pnpm-workspace.yaml
