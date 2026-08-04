@@ -113,14 +113,27 @@ def stage() -> None:
     print(f"staged {len(list(src.glob('*.json')))} leaderboard files to {dst}")
 
 
+def backfill() -> None:
+    from backfill import backfill_batch
+    client = GitHubClient(GITHUB_TOKEN)
+    repos = load_repos()
+    boards = build_boards(repos, date.today())
+    processed = backfill_batch(repos, boards, client, date.today())
+    if processed:
+        save_repos(repos)
+    print(f"backfill processed: {processed}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="GitHub Star Trend pipeline")
-    parser.add_argument("command", choices=["sync", "stage"])
+    parser.add_argument("command", choices=["sync", "stage", "backfill"])
     args = parser.parse_args()
     if args.command == "sync":
         sync()
     elif args.command == "stage":
         stage()
+    elif args.command == "backfill":
+        backfill()
 
 
 if __name__ == "__main__":
