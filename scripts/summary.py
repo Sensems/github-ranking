@@ -79,12 +79,16 @@ def summarize_batch(
     client = client_factory(api_key)
     results: dict[int, Optional[dict]] = {}
 
-    def work(item: dict) -> tuple[int, Optional[dict]]:
-        return item["repo_id"], generate_with_retry(client, item["readme_excerpt"])
+    def work(item: dict) -> tuple[int, Optional[dict], Optional[str]]:
+        return (
+            item["repo_id"],
+            generate_with_retry(client, item["readme_excerpt"]),
+            item.get("readme_hash"),
+        )
 
     with ThreadPoolExecutor(max_workers=SUMMARY_CONCURRENCY) as pool:
-        for repo_id, summary_dict in pool.map(work, items):
+        for repo_id, summary_dict, readme_hash in pool.map(work, items):
             results[repo_id] = summary_dict
             if summary_dict is not None:
-                save_summary(repo_id, summary_dict, readme_hash=None)
+                save_summary(repo_id, summary_dict, readme_hash=readme_hash)
     return results

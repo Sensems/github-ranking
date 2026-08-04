@@ -49,7 +49,11 @@ def pending_summaries(repos: dict[int, dict], boards: dict[str, list[dict]]) -> 
         readme = load_readme(repo_id)
         if readme is None:
             continue
-        pending.append({"repo_id": repo_id, "readme_excerpt": readme["excerpt"]})
+        pending.append({
+            "repo_id": repo_id,
+            "readme_excerpt": readme["excerpt"],
+            "readme_hash": repo.get("readme_hash"),
+        })
     return pending[:SUMMARY_BATCH_SIZE]
 
 
