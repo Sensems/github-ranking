@@ -5,7 +5,7 @@
 - 每日采集按 Star 排序的 **Top 10,000** 仓库，沉淀滚动历史快照（400 天）
 - 计算 **日 / 周 / 月 / 年** 四维度增速榜单（Top 100）
 - 调用**讯飞星辰 MaaS（Astron）**大模型对榜单仓库生成中文摘要
-- Nuxt 3 静态站点（预渲染、SEO 友好），部署到团队 nginx
+- Nuxt 3 静态站点（预渲染、SEO 友好），部署到 GitHub Pages
 - 全程 GitHub Actions 驱动，无常驻服务端
 
 ## 目录结构
@@ -47,9 +47,15 @@ python -m pytest
 | `XFYUN_API_KEY` | 讯飞星辰 MaaS API Key |
 | `XFYUN_BASE_URL` | 讯飞 API Base URL（以官方文档为准） |
 | `XFYUN_MODEL` | 模型 modelId（默认 xsparkx2） |
-| `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_PATH` | 目标服务器与 nginx 静态目录 |
-| `SSH_PRIVATE_KEY` | 部署用 SSH 私钥 |
+| `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_PATH` / `SSH_PRIVATE_KEY` | （可选）自建 nginx 部署，见 docs/DEPLOY.md |
 | `NOTIFY_WEBHOOK` | 失败告警 Webhook |
+
+仓库级变量（Settings → Variables，可留默认）：
+
+| Variable | 默认值 |
+|----------|--------|
+| `NUXT_APP_BASE_URL` | `/github-ranking/`（GitHub Pages 项目页路径） |
+| `SITE_URL` | `https://Sensems.github.io/github-ranking`（sitemap 用） |
 
 ## 文档
 

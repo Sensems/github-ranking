@@ -14,7 +14,7 @@
 | Search API 报 403 | `GH_TOKEN` 过期或权限不足（需 public_repo 读权限） |
 | AI 摘要全部失败 | `XFYUN_API_KEY` / `XFYUN_BASE_URL` / `XFYUN_MODEL` 配置或额度问题 |
 | 构建失败 | 前端依赖版本变化，检查 `npm ci` 日志 |
-| 部署失败 | SSH 密钥、服务器 rsync、目录权限 |
+| 部署失败 | GitHub Pages：检查 Settings → Pages → Source 是否为 GitHub Actions；自建 nginx：检查 SSH 密钥、rsync、目录权限 |
 | 告警未收到 | `NOTIFY_WEBHOOK` 失效或 Notify 步骤被跳过 |
 
 ## 数据文件说明

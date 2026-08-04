@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  pages: write
 
 jobs:
   sync:
@@ -46,14 +48,17 @@ jobs:
         run: |
           python scripts/main.py stage
           npm run generate --prefix frontend
-
-      - name: Deploy to nginx
-        run: bash deploy/deploy.sh
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          NUXT_APP_BASE_URL: ${{ vars.NUXT_APP_BASE_URL || '/github-ranking/' }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://Sensems.github.io/github-ranking' }}
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/.output/public
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
 
       - name: Notify on failure
         if: failure()
