@@ -59,3 +59,49 @@ def test_search_raises_on_http_error():
     except requests.HTTPError:
         return
     raise AssertionError("expected HTTPError")
+
+
+def test_fetch_readme_falls_back_to_lowercase():
+    calls = []
+
+    class FakeSession:
+        def get(self, url):
+            calls.append(url)
+            if "README.md" in url:
+                return type("R", (), {"status_code": 404})()
+            return type("R", (), {"status_code": 200, "text": "readme-body"})()
+
+    client = gc.GitHubClient(session=FakeSession())
+    assert client.fetch_readme("owner/repo") == "readme-body"
+    assert len(calls) == 2
+
+
+def test_readme_hash_is_sha256():
+    client = gc.GitHubClient()
+    assert client.readme_hash("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+    assert client.readme_hash(None) is None
+
+
+def test_stargazer_count_at_counts_only_before_cutoff():
+    page1 = [
+        {"starred_at": "2025-01-01T00:00:00Z"},
+        {"starred_at": "2025-03-01T00:00:00Z"},
+    ]
+    page2 = [
+        {"starred_at": "2026-01-01T00:00:00Z"},
+    ]
+
+    class FakeSession:
+        def get(self, url, params=None, headers=None):
+            return type(
+                "R",
+                (),
+                {
+                    "json": staticmethod(lambda: page1 if params["page"] == 1 else page2),
+                    "raise_for_status": staticmethod(lambda: None),
+                },
+            )()
+
+    client = gc.GitHubClient(session=FakeSession())
+    assert client.stargazer_count_at("owner/repo", "2025-06-01T00:00:00Z") == 2
+    assert client.stargazer_count_at("owner/repo", "2024-06-01T00:00:00Z") == 0
