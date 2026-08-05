@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from config import NEWCOMER_DAYS, NEWCOMER_MIN_STARS, POOL_SIZE
+from config import NEWCOMER_DAYS, NEWCOMER_MIN_STARS, POOL_SIZE, WATCH_TOP_N
 from github_client import GitHubClient
 
 
@@ -34,4 +34,17 @@ def merge_pool(existing: dict[int, dict], fresh: dict[int, dict], newcomers: dic
     merged = dict(existing)
     merged.update(fresh)
     merged.update(newcomers)
+    return merged
+
+
+def build_watch_set(
+    client: GitHubClient,
+    existing: dict[int, dict],
+    previous_ids: set[int],
+    limit: int = WATCH_TOP_N,
+) -> dict[int, dict]:
+    merged = merge_pool(existing, fetch_pool(client, limit), fetch_newcomers(client))
+    for rid in previous_ids:
+        if rid in existing and rid not in merged:
+            merged[rid] = existing[rid]
     return merged
