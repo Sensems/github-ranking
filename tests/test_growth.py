@@ -1,15 +1,6 @@
 from datetime import date
 
-import pytest
-
-import data_files as df
 import growth
-
-
-@pytest.fixture(autouse=True)
-def clean_data(tmp_path, monkeypatch):
-    monkeypatch.setattr(df, "DATA_DIR", tmp_path)
-    yield
 
 
 def history(*rows):
@@ -47,19 +38,51 @@ def test_eligible_filters_by_stars_and_age():
 
 
 def test_build_boards_sorts_filters_and_ranks():
-    df.append_history(1, "2026-08-03", 1990, 5)
-    df.append_history(1, "2026-08-04", 2000, 5)
-    df.append_history(2, "2026-08-03", 1400, 9)
-    df.append_history(2, "2026-08-04", 1500, 9)
+    hist = {
+        1: history(("2026-08-03", 1990), ("2026-08-04", 2000)),
+        2: history(("2026-08-03", 1400), ("2026-08-04", 1500)),
+    }
+    summaries = {}
     repos = {
         1: {"repo_id": 1, "repo_name": "a/b", "stars": 2000, "forks": 5, "language": "Python",
             "description": "x", "html_url": "https://github.com/a/b", "created_at": "2020-01-01T00:00:00Z"},
         2: {"repo_id": 2, "repo_name": "c/d", "stars": 1500, "forks": 9, "language": "Go",
             "description": "y", "html_url": "https://github.com/c/d", "created_at": "2020-01-01T00:00:00Z"},
     }
-    boards = growth.build_boards(repos, date(2026, 8, 4))
+    boards = growth.build_boards(
+        repos,
+        date(2026, 8, 4),
+        load_history=lambda rid: hist.get(rid, []),
+        load_summary=lambda rid: summaries.get(rid),
+    )
     assert [i["repo_name"] for i in boards["daily"]] == ["c/d", "a/b"]
     assert boards["daily"][0]["growth"]["daily"] == 100
     assert boards["daily"][0]["rank"] == 1
     assert [i["repo_name"] for i in boards["total"]] == ["a/b", "c/d"]
     assert len(boards["weekly"]) == 0  # 7 天前无快照
+
+
+def test_build_boards_total_uses_total_size():
+    repos = {
+        i: {
+            "repo_id": i,
+            "repo_name": f"o/r{i}",
+            "stars": 1000 + i,
+            "forks": 1,
+            "language": "Python",
+            "description": "",
+            "html_url": f"https://github.com/o/r{i}",
+            "created_at": "2020-01-01T00:00:00Z",
+        }
+        for i in range(1, 6)
+    }
+    boards = growth.build_boards(
+        repos,
+        date(2026, 8, 4),
+        load_history=lambda _rid: [],
+        load_summary=lambda _rid: None,
+        total_size=2,
+        board_size=10,
+    )
+    assert len(boards["total"]) == 2
+    assert [i["repo_name"] for i in boards["total"]] == ["o/r5", "o/r4"]

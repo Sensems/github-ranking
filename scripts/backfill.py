@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import Callable
 
 from config import BACKFILL_BATCH_SIZE
-from data_files import append_history, load_history
 from github_client import GitHubClient
 from growth import nearest_snapshot
 
@@ -19,6 +19,9 @@ def backfill_batch(
     boards: dict[str, list[dict]],
     client: GitHubClient,
     today: date,
+    *,
+    load_history: Callable[[int], list[dict]],
+    upsert_snapshot: Callable[[int, str, int, int], None],
 ) -> int:
     candidates = sorted({item["repo_id"] for items in boards.values() for item in items})
     processed = 0
@@ -30,7 +33,7 @@ def backfill_batch(
             continue
         before = (today - timedelta(days=365)).isoformat()
         stars_365 = client.stargazer_count_at(repo["repo_name"], before)
-        append_history(repo_id, before, stars_365, 0)
+        upsert_snapshot(repo_id, before, stars_365, 0)
         repo["backfilled_365"] = before
         processed += 1
     return processed

@@ -5,9 +5,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"
 
+# Database
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
 # GitHub
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
-POOL_SIZE = 10_000
+WATCH_TOP_N = 500
+POOL_SIZE = WATCH_TOP_N
+TOTAL_BOARD_SIZE = 100
 NEWCOMER_MIN_STARS = 500
 NEWCOMER_DAYS = 30
 

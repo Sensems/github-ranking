@@ -14,10 +14,13 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
+    // Overridden at runtime by NUXT_DATABASE_URL; db.ts also falls back to DATABASE_URL.
+    databaseUrl: process.env.NUXT_DATABASE_URL || process.env.DATABASE_URL || '',
     public: {
       siteUrl: process.env.SITE_URL || 'https://github-trend.example.com',
     },
   },
+
   nitro: {
     prerender: {
       routes: ['/sitemap.xml'],

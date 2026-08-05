@@ -1,34 +1,27 @@
-"""管道 CLI：sync（每日全流程）、stage（榜单 JSON 进前端）、backfill（Task 21 追加）。"""
+"""管道 CLI：sync（每日全流程）、backfill、migrate。"""
 from __future__ import annotations
 
 import argparse
-import shutil
 from datetime import date
+from typing import Callable
 
+import config
+import db
+import migrate
 from config import (
-    DATA_DIR,
     GITHUB_TOKEN,
-    POOL_SIZE,
+    HISTORY_RETENTION_DAYS,
     README_TRUNCATE_CHARS,
-    REPO_ROOT,
     SUMMARY_BATCH_SIZE,
+    WATCH_TOP_N,
     XFYUN_API_KEY,
 )
-from data_files import (
-    append_history,
-    load_readme,
-    load_repos,
-    load_summary,
-    save_leaderboard,
-    save_readme,
-    save_repos,
-)
+
+# Re-export for tests that monkeypatch main.DATABASE_URL
+DATABASE_URL = config.DATABASE_URL
 from github_client import GitHubClient
 from growth import build_boards
-from pool import fetch_newcomers, fetch_pool, merge_pool
-from snapshot import prune_all
-
-FRONTEND_DATA_DIR = REPO_ROOT / "frontend" / "app" / "data" / "leaderboards"
+from pool import build_watch_set
 
 
 def candidate_ids(boards: dict[str, list[dict]]) -> set[int]:
@@ -39,14 +32,21 @@ def candidate_ids(boards: dict[str, list[dict]]) -> set[int]:
     return ids
 
 
-def pending_summaries(repos: dict[int, dict], boards: dict[str, list[dict]]) -> list[dict]:
+def pending_summaries(
+    repos: dict[int, dict],
+    boards: dict[str, list[dict]],
+    conn,
+    *,
+    load_readme: Callable = db.load_readme,
+    load_summary: Callable = db.load_summary,
+) -> list[dict]:
     pending: list[dict] = []
     for repo_id in candidate_ids(boards):
         repo = repos[repo_id]
-        cached = load_summary(repo_id)
+        cached = load_summary(conn, repo_id)
         if cached is not None and cached.get("readme_hash") == repo.get("readme_hash"):
             continue
-        readme = load_readme(repo_id)
+        readme = load_readme(conn, repo_id)
         if readme is None:
             continue
         pending.append({
@@ -57,83 +57,160 @@ def pending_summaries(repos: dict[int, dict], boards: dict[str, list[dict]]) -> 
     return pending[:SUMMARY_BATCH_SIZE]
 
 
-def refresh_readmes(client: GitHubClient, repos: dict[int, dict], boards: dict[str, list[dict]]) -> None:
+def refresh_readmes(
+    client: GitHubClient,
+    repos: dict[int, dict],
+    boards: dict[str, list[dict]],
+    conn,
+) -> None:
     for repo_id in candidate_ids(boards):
         repo = repos[repo_id]
         content = client.fetch_readme(repo["repo_name"], README_TRUNCATE_CHARS)
         new_hash = client.readme_hash(content)
         if content is not None:
-            save_readme(repo_id, new_hash, content)
+            db.save_readme(conn, repo_id, new_hash, content)
         repo["readme_hash"] = new_hash
+        db.upsert_repo(conn, repo)
 
 
 def sync() -> None:
-    client = GitHubClient(GITHUB_TOKEN)
-    today = date.today()
+    if not (DATABASE_URL or config.DATABASE_URL):
+        raise SystemExit("DATABASE_URL is required")
 
-    print("[1/6] fetch pool")
-    repos = merge_pool(load_repos(), fetch_pool(client, POOL_SIZE), fetch_newcomers(client))
-    print(f"      pool size: {len(repos)}")
+    with db.connect() as conn:
+        print("[1/6] migrate")
+        applied = migrate.migrate_up(conn)
+        print(f"      applied migrations: {applied}")
 
-    print("[2/6] write snapshots")
-    for repo in repos.values():
-        append_history(repo["repo_id"], today.isoformat(), repo["stars"], repo["forks"])
-    pruned = prune_all(repos)
-    print(f"      snapshots written, pruned rows: {pruned}")
+        client = GitHubClient(GITHUB_TOKEN)
+        today = date.today()
 
-    print("[3/6] compute boards")
-    boards = build_boards(repos, today)
+        print("[2/6] build watch set + snapshots")
+        existing = db.load_repos(conn)
+        previous = db.load_previous_growth_members(conn)
+        repos = build_watch_set(client, existing, previous, WATCH_TOP_N)
+        print(f"      watch set size: {len(repos)}")
 
-    print("[4/6] refresh README for top-100 candidates")
-    refresh_readmes(client, repos, boards)
-    save_repos(repos)
+        for repo in repos.values():
+            db.upsert_repo(conn, repo)
+            db.upsert_snapshot(
+                conn,
+                repo["repo_id"],
+                today.isoformat(),
+                repo["stars"],
+                repo["forks"],
+            )
+        pruned = db.prune_snapshots(conn, HISTORY_RETENTION_DAYS)
+        print(f"      snapshots written, pruned rows: {pruned}")
 
-    print("[5/6] generate AI summaries")
-    pending = pending_summaries(repos, boards)
-    if pending and XFYUN_API_KEY:
-        from summary import summarize_batch
-        results = summarize_batch(pending, XFYUN_API_KEY)
-        ok = sum(1 for v in results.values() if v is not None)
-        print(f"      summarized: {ok} of {len(pending)}")
-    else:
-        print(f"      skipped ({len(pending)} pending; XFYUN_API_KEY {'set' if XFYUN_API_KEY else 'not set'})")
+        load_history = lambda rid: db.load_history(conn, rid)
+        load_summary = lambda rid: db.load_summary(conn, rid)
 
-    print("[6/6] save leaderboards")
-    for name, items in build_boards(repos, today).items():
-        save_leaderboard(name, {"type": name, "generated_at": today.isoformat(), "items": items})
-    print("sync done")
+        print("[3/6] compute boards (first pass)")
+        boards = build_boards(
+            repos,
+            today,
+            load_history=load_history,
+            load_summary=load_summary,
+        )
 
+        print("[4/6] refresh README for board candidates")
+        refresh_readmes(client, repos, boards, conn)
 
-def stage() -> None:
-    src = DATA_DIR / "leaderboards"
-    dst = FRONTEND_DATA_DIR
-    dst.mkdir(parents=True, exist_ok=True)
-    for f in src.glob("*.json"):
-        shutil.copy(f, dst / f.name)
-    print(f"staged {len(list(src.glob('*.json')))} leaderboard files to {dst}")
+        print("[5/6] generate AI summaries")
+        pending = pending_summaries(repos, boards, conn)
+        if pending and XFYUN_API_KEY:
+            from summary import summarize_batch
+
+            results = summarize_batch(
+                pending,
+                XFYUN_API_KEY,
+                save_summary=lambda rid, s, rh: db.save_summary(conn, rid, s, rh),
+            )
+            ok = sum(1 for v in results.values() if v is not None)
+            print(f"      summarized: {ok} of {len(pending)}")
+        else:
+            print(
+                f"      skipped ({len(pending)} pending; "
+                f"XFYUN_API_KEY {'set' if XFYUN_API_KEY else 'not set'})"
+            )
+
+        print("[6/6] rebuild boards with summaries + save")
+        boards = build_boards(
+            repos,
+            today,
+            load_history=load_history,
+            load_summary=load_summary,
+        )
+        for name, items in boards.items():
+            db.save_leaderboard(
+                conn,
+                name,
+                {"type": name, "generated_at": today.isoformat(), "items": items},
+            )
+        conn.commit()
+        print("sync done")
 
 
 def backfill() -> None:
+    if not (DATABASE_URL or config.DATABASE_URL):
+        raise SystemExit("DATABASE_URL is required")
+
     from backfill import backfill_batch
-    client = GitHubClient(GITHUB_TOKEN)
-    repos = load_repos()
-    boards = build_boards(repos, date.today())
-    processed = backfill_batch(repos, boards, client, date.today())
-    if processed:
-        save_repos(repos)
-    print(f"backfill processed: {processed}")
+
+    with db.connect() as conn:
+        migrate.migrate_up(conn)
+        client = GitHubClient(GITHUB_TOKEN)
+        today = date.today()
+        existing = db.load_repos(conn)
+        previous = db.load_previous_growth_members(conn)
+        # Same G2 watch set as sync — fallen-out repos are not backfill candidates.
+        repos = build_watch_set(client, existing, previous, WATCH_TOP_N)
+        load_history = lambda rid: db.load_history(conn, rid)
+        load_summary = lambda rid: db.load_summary(conn, rid)
+        boards = build_boards(
+            repos,
+            today,
+            load_history=load_history,
+            load_summary=load_summary,
+        )
+        processed = backfill_batch(
+            repos,
+            boards,
+            client,
+            today,
+            load_history=load_history,
+            upsert_snapshot=lambda rid, when, stars, forks: db.upsert_snapshot(
+                conn, rid, when, stars, forks
+            ),
+        )
+        if processed:
+            for repo in repos.values():
+                if repo.get("backfilled_365"):
+                    db.upsert_repo(conn, repo)
+        conn.commit()
+        print(f"backfill processed: {processed}")
+
+
+def migrate_cmd() -> None:
+    if not config.DATABASE_URL:
+        raise SystemExit("DATABASE_URL is not set")
+
+    with db.connect() as conn:
+        applied = migrate.migrate_up(conn)
+    print(f"Applied {applied} migration(s)")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="GitHub Star Trend pipeline")
-    parser.add_argument("command", choices=["sync", "stage", "backfill"])
+    parser.add_argument("command", choices=["sync", "backfill", "migrate"])
     args = parser.parse_args()
     if args.command == "sync":
         sync()
-    elif args.command == "stage":
-        stage()
     elif args.command == "backfill":
         backfill()
+    elif args.command == "migrate":
+        migrate_cmd()
 
 
 if __name__ == "__main__":

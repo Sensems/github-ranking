@@ -14,7 +14,6 @@ from config import (
     XFYUN_BASE_URL,
     XFYUN_MODEL,
 )
-from data_files import save_summary
 
 SYSTEM_PROMPT = (
     "你是一个技术文档摘要专家，请用简洁的中文概括以下GitHub项目的README内容。"
@@ -53,6 +52,7 @@ def generate_one(client: OpenAI, readme_excerpt: str) -> dict:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": readme_excerpt},
         ],
+
         temperature=0.3,
         max_tokens=1024,
         timeout=SUMMARY_TIMEOUT_S,
@@ -74,8 +74,10 @@ def summarize_batch(
     items: list[dict],
     api_key: str,
     client_factory: Callable[[str], OpenAI] = build_client,
+    *,
+    save_summary: Callable[[int, dict, Optional[str]], None],
 ) -> dict[int, Optional[dict]]:
-    """items: [{repo_id, readme_excerpt}]；成功后写 summaries 缓存。"""
+    """items: [{repo_id, readme_excerpt, readme_hash}]；成功后经 save_summary 写缓存。"""
     client = client_factory(api_key)
     results: dict[int, Optional[dict]] = {}
 
@@ -90,5 +92,5 @@ def summarize_batch(
         for repo_id, summary_dict, readme_hash in pool.map(work, items):
             results[repo_id] = summary_dict
             if summary_dict is not None:
-                save_summary(repo_id, summary_dict, readme_hash=readme_hash)
+                save_summary(repo_id, summary_dict, readme_hash)
     return results

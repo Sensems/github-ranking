@@ -27,7 +27,7 @@ export interface LeaderboardItem {
 
 export interface LeaderboardPayload {
   type: string
-  generated_at: string
+  generated_at: string | null
   items: LeaderboardItem[]
 }
 

@@ -1,23 +1,17 @@
-import pytest
+"""Snapshot prune lives in db.prune_snapshots (file-backed snapshot.py removed)."""
 
-import data_files as df
-import snapshot
+from unittest.mock import MagicMock
 
-
-@pytest.fixture(autouse=True)
-def clean_data(tmp_path, monkeypatch):
-    monkeypatch.setattr(df, "DATA_DIR", tmp_path)
-    yield
+import db
 
 
-def test_record_snapshot_writes_row():
-    snapshot.record_snapshot(1, 100, 10, when="2026-08-04")
-    assert df.load_history(1) == [{"date": "2026-08-04", "stars": 100, "forks": 10}]
+def test_prune_snapshots_deletes_old_rows():
+    conn = MagicMock()
+    cur = MagicMock()
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    cur.rowcount = 3
 
-
-def test_prune_all_counts_removed_rows():
-    df.append_history(1, "2025-01-01", 1, 0)
-    df.append_history(1, "2026-08-04", 100, 10)
-    df.append_history(2, "2025-01-01", 1, 0)
-    removed = snapshot.prune_all({1: {}, 2: {}}, retention_days=30)
-    assert removed == 2
+    assert db.prune_snapshots(conn, retention_days=30) == 3
+    sql = cur.execute.call_args.args[0]
+    assert "DELETE FROM snapshots" in sql
