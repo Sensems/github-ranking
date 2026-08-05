@@ -2,7 +2,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-import config
 import main
 import migrate
 
@@ -61,7 +60,7 @@ def test_migrate_up_skips_already_applied():
 def test_migrate_cmd_connects_and_applies(monkeypatch, capsys):
     import db
 
-    monkeypatch.setattr(config, "DATABASE_URL", "postgresql://test/db")
+    monkeypatch.setattr(main, "DATABASE_URL", "postgresql://test/db")
 
     mock_conn = MagicMock()
     cm = MagicMock()
@@ -79,7 +78,7 @@ def test_migrate_cmd_connects_and_applies(monkeypatch, capsys):
 
 
 def test_migrate_cmd_exits_without_database_url(monkeypatch):
-    monkeypatch.setattr(config, "DATABASE_URL", "")
+    monkeypatch.setattr(main, "DATABASE_URL", "")
 
     with pytest.raises(SystemExit, match="DATABASE_URL is not set"):
         main.migrate_cmd()
