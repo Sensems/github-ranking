@@ -9,5 +9,6 @@ frontend/.output/
 frontend/app/data/leaderboards/
 deploy/.ssh/
 .superpowers/
+.worktrees/
 pnpm-lock.yaml
 frontend/pnpm-workspace.yaml
