@@ -21,7 +21,7 @@ from pool import build_watch_set
 
 
 def sync() -> None:
-    if not (DATABASE_URL or config.DATABASE_URL):
+    if not DATABASE_URL:
         raise SystemExit("DATABASE_URL is required")
 
     with db.connect() as conn:
@@ -63,7 +63,7 @@ def sync() -> None:
 
 
 def backfill() -> None:
-    if not (DATABASE_URL or config.DATABASE_URL):
+    if not DATABASE_URL:
         raise SystemExit("DATABASE_URL is required")
 
     from backfill import backfill_batch
@@ -103,7 +103,7 @@ def backfill() -> None:
 
 
 def migrate_cmd() -> None:
-    if not config.DATABASE_URL:
+    if not DATABASE_URL:
         raise SystemExit("DATABASE_URL is not set")
 
     with db.connect() as conn:
