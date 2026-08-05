@@ -468,7 +468,7 @@
       "description": "Contains the description files for the Orcahand model (MJCF, URDF)",
       "language": "Python",
       "stars": 387,
-      "forks": 105,
+      "forks": 106,
       "html_url": "https://github.com/orcahand/orcahand_description",
       "growth": {
         "daily": 0,
