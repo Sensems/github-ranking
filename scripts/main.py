@@ -125,13 +125,14 @@ def backfill() -> None:
 
 
 def migrate_cmd() -> None:
-    import psycopg
-
-    import migrate as migrate_mod
     from config import DATABASE_URL
 
     if not DATABASE_URL:
         raise SystemExit("DATABASE_URL is not set")
+
+    import psycopg
+
+    import migrate as migrate_mod
 
     with psycopg.connect(DATABASE_URL) as conn:
         applied = migrate_mod.migrate_up(conn)
