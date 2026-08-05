@@ -7,6 +7,7 @@ from typing import Optional
 import requests
 
 SEARCH_URL = "https://api.github.com/search/repositories"
+REPO_BY_ID_URL = "https://api.github.com/repositories/{repo_id}"
 
 
 class GitHubClient:
@@ -18,6 +19,15 @@ class GitHubClient:
         resp = self.session.get(
             SEARCH_URL,
             params={"q": query, "per_page": per_page, "page": page},
+            headers=self.headers,
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    def get_repo_by_id(self, repo_id: int) -> dict:
+        """Fetch current repository metadata (including stargazers_count) by numeric id."""
+        resp = self.session.get(
+            REPO_BY_ID_URL.format(repo_id=repo_id),
             headers=self.headers,
         )
         resp.raise_for_status()

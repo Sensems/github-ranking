@@ -27,7 +27,7 @@
 
 | 现象 | 排查 |
 |------|------|
-| Search API 报 403 | `GH_TOKEN` 过期或权限不足（需 public_repo 读权限） |
+| Search API 报 403 | Actions secret `GH_TOKEN`（映射为 `GITHUB_TOKEN`）过期或权限不足（需 public_repo 读权限） |
 | Sync 数据库错误 | `DATABASE_URL`、runner → Postgres 网络、migrate 是否成功 |
 | AI 摘要全部失败 | `XFYUN_API_KEY` / `XFYUN_BASE_URL` / `XFYUN_MODEL` 配置或额度 |
 | 构建失败 | 前端依赖变化，检查 `npm ci` / `npm run build` 日志 |

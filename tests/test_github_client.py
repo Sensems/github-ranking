@@ -61,6 +61,21 @@ def test_search_raises_on_http_error():
     raise AssertionError("expected HTTPError")
 
 
+def test_get_repo_by_id_fetches_repository_endpoint():
+    captured = {}
+
+    class FakeSession:
+        def get(self, url, params=None, headers=None):
+            captured["url"] = url
+            return FakeResponse(repo(42, 1234))
+
+    client = gc.GitHubClient(session=FakeSession())
+    result = client.get_repo_by_id(42)
+    assert "repositories/42" in captured["url"]
+    assert result["id"] == 42
+    assert result["stargazers_count"] == 1234
+
+
 def test_fetch_readme_falls_back_to_lowercase():
     calls = []
 

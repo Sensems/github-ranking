@@ -44,9 +44,11 @@ GitHub-hosted Actions runner 必须能 **TCP 连接** 到 Postgres 主机与端�
 
 1. 安装 Node 20+、nginx
 2. 创建部署目录，例如 `/var/www/github-ranking`（对应 `DEPLOY_PATH`）
-3. 在部署目录或 systemd/pm2 环境中配置 **运行时** `DATABASE_URL`（只读角色），**不要**在 `npm run build` 时依赖真实连接串
+3. 在部署目录或 systemd/pm2 环境中配置 **运行时** DB URL（只读角色），**不要**在 `npm run build` 时依赖真实连接串。推荐设置 `NUXT_DATABASE_URL`（Nuxt runtimeConfig 标准覆盖）；也可设置 `DATABASE_URL`（`getPool()` 会回退读取）
 4. 参考 `deploy/nginx.conf.example` 配置反代到 `127.0.0.1:3000`
 5. 用 systemd 或 pm2 跑 Nitro，进程/单元名约定为 **`github-ranking`**
+
+> **入口路径**：`deploy/deploy.sh` 将 `frontend/.output/` **内容** rsync 到 `DEPLOY_PATH`，因此工作目录下入口是 `server/index.mjs`（不是 `.output/server/index.mjs`）。
 
 **systemd 示例**（`/etc/systemd/system/github-ranking.service`）：
 
@@ -59,9 +61,10 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/var/www/github-ranking
-Environment=DATABASE_URL=postgresql://nuxt_readonly:YOUR_PASSWORD@127.0.0.1:5432/github-ranking
+Environment=NUXT_DATABASE_URL=postgresql://nuxt_readonly:YOUR_PASSWORD@127.0.0.1:5432/github-ranking
+# 也可用 Environment=DATABASE_URL=...（getPool 回退）
 Environment=PORT=3000
-ExecStart=/usr/bin/node .output/server/index.mjs
+ExecStart=/usr/bin/node server/index.mjs
 Restart=on-failure
 RestartSec=5
 
@@ -78,9 +81,10 @@ sudo systemctl enable --now github-ranking
 
 ```bash
 cd /var/www/github-ranking
-export DATABASE_URL='postgresql://nuxt_readonly:YOUR_PASSWORD@127.0.0.1:5432/github-ranking'
+export NUXT_DATABASE_URL='postgresql://nuxt_readonly:YOUR_PASSWORD@127.0.0.1:5432/github-ranking'
+# 或: export DATABASE_URL='...'
 export PORT=3000
-pm2 start .output/server/index.mjs --name github-ranking
+pm2 start server/index.mjs --name github-ranking
 pm2 save
 ```
 
@@ -92,7 +96,7 @@ pm2 save
 | Secret | 用途 |
 |--------|------|
 | `DATABASE_URL` | Pipeline 读写 Postgres（`postgresql://user:pass@host:5432/github-ranking`） |
-| `GH_TOKEN` | GitHub PAT（public_repo 读取） |
+| `GH_TOKEN` | GitHub PAT（Actions secret）；workflow 映射为环境变量 `GITHUB_TOKEN` |
 | `XFYUN_API_KEY` | 讯飞星辰 MaaS API Key |
 | `XFYUN_BASE_URL` | 讯飞 API Base URL |
 | `XFYUN_MODEL` | 模型 ID（可选，默认 xsparkx2） |
@@ -116,7 +120,7 @@ pm2 save
 
 ```bash
 export DATABASE_URL='postgresql://pipeline_user:YOUR_PASSWORD@db-host:5432/github-ranking'
-export GITHUB_TOKEN='ghp_...'   # 或 GH_TOKEN，与 config 一致
+export GITHUB_TOKEN='ghp_...'   # 本地/脚本读取 GITHUB_TOKEN（非 GH_TOKEN）
 
 pip install -r requirements.txt
 python scripts/main.py migrate
@@ -141,9 +145,9 @@ python scripts/main.py sync
 ## 2. 构建与部署路径
 
 - CI：`npm ci` + `npm run build`（产出 `frontend/.output/`）
-- `deploy/deploy.sh` rsync **整个** `frontend/.output/` 到 `DEPLOY_PATH`，再执行 `DEPLOY_RESTART_CMD`
+- `deploy/deploy.sh` 以 `frontend/.output/`（尾斜杠）rsync **内容**到 `DEPLOY_PATH`（远端出现 `server/index.mjs`、`public/` 等），再执行 `DEPLOY_RESTART_CMD`
 - `baseURL` 默认 `/`；`SITE_URL` 用于 sitemap
-- `DATABASE_URL` 仅 **Nitro 进程运行时** 需要，构建步骤不要求
+- DB URL 仅 **Nitro 进程运行时** 需要（推荐 `NUXT_DATABASE_URL`，或 `DATABASE_URL`），构建步骤不要求
 
 ## 3. 告警验证
 
@@ -158,6 +162,6 @@ python scripts/main.py sync
 |------|------|
 | Sync 连不上库 | runner → Postgres 网络、`DATABASE_URL`、防火墙、TLS |
 | 部署后 502 | Node 是否监听 3000；`systemctl status github-ranking` 或 `pm2 status` |
-| API 5xx | 服务器进程是否配置了可读的 `DATABASE_URL`；Postgres 是否可达 |
+| API 5xx | 服务器进程是否配置了可读的 `NUXT_DATABASE_URL` / `DATABASE_URL`；入口是否为 `node server/index.mjs`；Postgres 是否可达 |
 | 年榜长期为空 | 正常冷启动；确认 backfill workflow 在跑且 `repos.backfilled_365` 在增长 |
 | 仍看到 GitHub Pages | 产品路径已切换 SSR；Pages 可关闭或仅作镜像，非主路径 |

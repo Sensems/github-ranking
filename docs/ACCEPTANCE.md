@@ -6,7 +6,7 @@
 | 模块 | 验收标准 | 状态 | 证据 |
 |------|---------|------|------|
 | 网络 | Actions runner 能 TCP 连接 Postgres | ⏳ | 见 docs/DEPLOY.md §0；上线前必测 |
-| 数据采集 | 观察集写入 DB；每日 sync 成功率 ≥ 95% | ⏳ | 需配置 `DATABASE_URL` + `GH_TOKEN` 跑 sync |
+| 数据采集 | 观察集写入 DB；每日 sync 成功率 ≥ 95% | ⏳ | 需配置 `DATABASE_URL` + `GITHUB_TOKEN`（Actions 用 secret `GH_TOKEN`）跑 sync |
 | 增速计算 | 四增长榜 + 总榜可生成；误差 ≤ 5%；缺失显示「数据积累中」 | ✅/⏳ | `pytest tests/`；冷启动年榜 sparse 为预期 |
 | AI 摘要 | 重试后成功率 ≥ 95%；JSON 校验；降级可用 | ✅/⏳ | 单测通过；真实调用待密钥 |
 | API | `/api/health`、`/api/leaderboards/*` 读 Postgres | ✅/⏳ | Nitro 路由单测；联调待 DB |

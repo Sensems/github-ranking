@@ -66,7 +66,9 @@ python -m pytest
 | Secret | 用途 |
 |--------|------|
 | `DATABASE_URL` | Pipeline 读写 Postgres |
-| `GH_TOKEN` | GitHub PAT（public_repo 读取） |
+| `GH_TOKEN` | GitHub PAT（Actions secret → workflow 注入为环境变量 `GITHUB_TOKEN`） |
+
+本地跑 sync/backfill 请设置环境变量 `GITHUB_TOKEN`（`scripts/config.py` 只读该名，裸 `GH_TOKEN` 无效）。
 | `XFYUN_API_KEY` | 讯飞星辰 MaaS API Key |
 | `XFYUN_BASE_URL` | 讯飞 API Base URL |
 | `XFYUN_MODEL` | 模型 modelId（默认 xsparkx2） |

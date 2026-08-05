@@ -57,10 +57,13 @@ def build_watch_set(
     """True G2: Top-N ∪ newcomers ∪ previous growth members (with metadata).
 
     Does not retain historical repos that fell out of those three sources.
+    Previous-only members (not in Top-N/newcomers) are refreshed via GitHub
+    so snapshot stars are current, not stale DB metadata.
     """
     top = fetch_pool(client, limit)
     newcomers = fetch_newcomers(client)
-    g2_ids = set(top) | set(newcomers) | {rid for rid in previous_ids if rid in existing}
+    previous_only = {rid for rid in previous_ids if rid in existing} - set(top) - set(newcomers)
+    g2_ids = set(top) | set(newcomers) | previous_only
 
     merged: dict[int, dict] = {}
     for rid in g2_ids:
@@ -69,6 +72,7 @@ def build_watch_set(
         elif rid in top:
             merged[rid] = dict(top[rid])
         else:
-            merged[rid] = dict(existing[rid])
+            # previous-only: refresh live stars/metadata before snapshotting
+            merged[rid] = to_repo_record(client.get_repo_by_id(rid))
         _preserve_db_fields(merged[rid], existing.get(rid))
     return merged

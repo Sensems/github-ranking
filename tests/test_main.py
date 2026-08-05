@@ -177,6 +177,9 @@ def test_sync_end_to_end_with_fakes(monkeypatch):
         def search(self, query, per_page=100, page=1):
             return {"items": []}
 
+        def get_repo_by_id(self, repo_id):
+            raise AssertionError(f"unexpected get_repo_by_id({repo_id})")
+
         def fetch_readme(self, repo_name, truncate_chars=30_000):
             return "readme content"
 
@@ -282,6 +285,9 @@ def test_sync_does_not_snapshot_fallen_out_repos(monkeypatch):
         def search(self, query, per_page=100, page=1):
             return {"items": []}
 
+        def get_repo_by_id(self, repo_id):
+            raise AssertionError(f"unexpected get_repo_by_id({repo_id})")
+
         def fetch_readme(self, repo_name, truncate_chars=30_000):
             return None
 
@@ -349,6 +355,9 @@ def test_backfill_skips_historical_non_g2_repos(monkeypatch):
 
         def search(self, query, per_page=100, page=1):
             return {"items": []}
+
+        def get_repo_by_id(self, repo_id):
+            raise AssertionError(f"unexpected get_repo_by_id({repo_id})")
 
         def stargazer_count_at(self, repo_name, before):
             store["stargazer_queries"].append(repo_name)
