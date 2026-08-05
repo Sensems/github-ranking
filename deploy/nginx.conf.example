@@ -1,18 +1,33 @@
+# Reverse-proxy to Nuxt Nitro (Node) on the same host.
+# Upstream listens on 127.0.0.1:3000 (NITRO_PORT / PORT).
+# TLS termination can be added via a separate listen 443 server block.
+
+upstream github_ranking {
+    server 127.0.0.1:3000;
+    keepalive 32;
+}
+
 server {
     listen 80;
     server_name github-trend.example.com;
-
-    root /var/www/github-star-trend;
-    index index.html;
 
     gzip on;
     gzip_types text/plain text/css application/javascript application/json image/svg+xml;
 
     location / {
-        try_files $uri $uri/ /index.html;
+        proxy_pass http://github_ranking;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
     }
 
-    location ~* \.(js|css|json|png|svg|woff2)$ {
+    location /_nuxt/ {
+        proxy_pass http://github_ranking;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
         expires 1h;
         add_header Cache-Control "public";
     }
