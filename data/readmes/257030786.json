@@ -1,4 +1,0 @@
-{
-  "hash": "fe229afeb72431c3ef3a74a21b8b3b420ee04dd4fb7363668a5e4534f3aa484a",
-  "excerpt": "# Treinamento Descomplicando o Ansible\n\nProjeto do treinamento para instalação de um cluster Kubernetes utilizando o Ansible + kubeadm + AWS EC2 + e outras coisitas mais.\n\nProjeto com contribuição dos alunos e o chat da Twitch.\n\n## Fases do projeto\n\n```\n- Provisioning => Criar as instâncias/vms para o nosso cluster.\n- Install_K8s => Criação do cluster, adiciona os workers, instalação do Helm e instala ferramentas de monitoração (Prometheus e Grafana).\n- Deploy_app_v1 => Deploy de uma aplicação exemplo na versão 1\n- Deploy_app_v2 => Deploy de uma aplicação exemplo na versão 2\n- Extra => Segredo\n```\n\n## TODO\n\n```\n- Vamos conhecer e utilizar o ansible-lint para deixar o código que criamos um bocado melhor. (https://ansible-lint.readthedocs.io/en/latest/usage.html)\n- \n\n\n## License\n[MIT](https://choosealicense.com/licenses/mit/)\n"
-}

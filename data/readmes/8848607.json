@@ -1,4 +1,0 @@
-{
-  "hash": "1f36cca8394ce2fa911b86d2d255958e13da725f56750df4ecb2f32511205eb4",
-  "excerpt": "# BlockTypeDescription\n\nBlockTypeDescription adds a block's type signature to its description.\nIt makes debugging more transparent, and turns an otherwise useless description into a useful one.\n\nBecause this project replaces an existing method on the private `NSBlock` class, this should be used **for debugging purposes only**.\n\n## Example Usage\n\n``` objective-c\nNSString * (^someBlock)(NSString *, BOOL, CGRect, float*[30]) = ^(NSString *a, BOOL b, CGRect c, float *d[30]) {\n    return @\"Some return value\";\n};\nNSLog(@\"This is my block! %@\", someBlock);\n```\n\n### Before\n\n```\nThis is my block! <__NSGlobalBlock__: 0x35c0>\n```\n\n### After\n\n```\nThis is my block! <__NSGlobalBlock__: (id (^)(id, char, struct CGRect, float*[30]))>\n```\n\n## License\n\nBlockTypeDescription is available under the MIT license. See the LICENSE file for more info.\n"
-}
