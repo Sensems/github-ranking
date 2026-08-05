@@ -124,9 +124,23 @@ def backfill() -> None:
     print(f"backfill processed: {processed}")
 
 
+def migrate_cmd() -> None:
+    import psycopg
+
+    import migrate as migrate_mod
+    from config import DATABASE_URL
+
+    if not DATABASE_URL:
+        raise SystemExit("DATABASE_URL is not set")
+
+    with psycopg.connect(DATABASE_URL) as conn:
+        applied = migrate_mod.migrate_up(conn)
+    print(f"Applied {applied} migration(s)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="GitHub Star Trend pipeline")
-    parser.add_argument("command", choices=["sync", "stage", "backfill"])
+    parser.add_argument("command", choices=["sync", "stage", "backfill", "migrate"])
     args = parser.parse_args()
     if args.command == "sync":
         sync()
@@ -134,6 +148,8 @@ def main() -> None:
         stage()
     elif args.command == "backfill":
         backfill()
+    elif args.command == "migrate":
+        migrate_cmd()
 
 
 if __name__ == "__main__":
