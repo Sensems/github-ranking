@@ -303,7 +303,7 @@
       "repo_name": "orcahand/orcahand_description",
       "description": "Contains the description files for the Orcahand model (MJCF, URDF)",
       "stars": 387,
-      "forks": 105,
+      "forks": 106,
       "language": "Python",
       "html_url": "https://github.com/orcahand/orcahand_description",
       "created_at": "2025-05-04T07:50:22Z",
@@ -2696,7 +2696,7 @@
       "repo_name": "enactic/openarm_description",
       "description": "URDF/xacro description files for the OpenArm robot system",
       "stars": 37,
-      "forks": 73,
+      "forks": 74,
       "language": "Python",
       "html_url": "https://github.com/enactic/openarm_description",
       "created_at": "2025-07-22T06:50:54Z"
