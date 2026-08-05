@@ -4,6 +4,10 @@ on:
     - cron: "0 0 * * *"   # UTC 00:00 = 北京时间 08:00
   workflow_dispatch: {}
 
+concurrency:
+  group: daily-sync
+  cancel-in-progress: false
+
 permissions:
   contents: write
   id-token: write
@@ -36,6 +40,7 @@ jobs:
           git add data
           if ! git diff --cached --quiet; then
             git commit -m "chore(data): daily sync $(date -u +%F)"
+            git pull --rebase origin main
             git push origin HEAD
           fi
 
