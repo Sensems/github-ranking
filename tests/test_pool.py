@@ -22,6 +22,15 @@ def test_to_repo_record_maps_fields():
     assert rec["forks"] == 3
 
 
+def test_to_repo_record_maps_open_issues_and_pushed_at():
+    raw = raw_repo(1, "a/b", 100)
+    raw["open_issues_count"] = 12
+    raw["pushed_at"] = "2026-07-14T19:25:58Z"
+    rec = pool.to_repo_record(raw)
+    assert rec["open_issues"] == 12
+    assert rec["pushed_at"] == "2026-07-14T19:25:58Z"
+
+
 def test_merge_pool_keeps_existing_and_applies_fresh():
     existing = {1: {"repo_name": "a/b", "stars": 10}}
     fresh = {1: {"repo_name": "a/b", "stars": 20}, 2: {"repo_name": "c/d", "stars": 30}}

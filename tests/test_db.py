@@ -125,6 +125,7 @@ def test_load_repos_maps_rows_to_dict():
         (
             42, "o/r", "desc", 100, 5, "Go", "https://github.com/o/r",
             "2020-01-01T00:00:00+00:00", "hash1", None, date(2026, 8, 5),
+            12, "2026-07-14T19:25:58+00:00",
         ),
     ])
 
@@ -133,6 +134,8 @@ def test_load_repos_maps_rows_to_dict():
     assert 42 in repos
     assert repos[42]["repo_name"] == "o/r"
     assert repos[42]["stars"] == 100
+    assert repos[42]["open_issues"] == 12
+    assert repos[42]["pushed_at"] == "2026-07-14T19:25:58+00:00"
 
 
 def test_load_readme_returns_none_when_missing():

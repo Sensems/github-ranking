@@ -26,16 +26,18 @@ def test_migrate_up_applies_pending_and_records():
 
     applied = migrate.migrate_up(conn, migrations_dir=migrate.DEFAULT_MIGRATIONS_DIR)
 
-    assert applied == 1
+    assert applied == 2
     sql_calls = _execute_sql_calls(cur)
     assert any("CREATE TABLE IF NOT EXISTS repos" in sql for sql in sql_calls)
+    assert any("open_issues" in sql for sql in sql_calls)
     insert_calls = [
         call for call in cur.execute.call_args_list
         if call.args[0].startswith("INSERT INTO schema_migrations")
     ]
-    assert len(insert_calls) == 1
+    assert len(insert_calls) == 2
     assert insert_calls[0].args[1] == ("001_init",)
-    assert conn.commit.call_count == 2  # schema table bootstrap + one migration
+    assert insert_calls[1].args[1] == ("002_repo_open_issues_pushed_at",)
+    assert conn.commit.call_count == 3  # schema table bootstrap + two migrations
 
 
 def test_migrate_up_skips_already_applied():
@@ -43,11 +45,17 @@ def test_migrate_up_skips_already_applied():
 
     applied = migrate.migrate_up(conn, migrations_dir=migrate.DEFAULT_MIGRATIONS_DIR)
 
-    assert applied == 0
+    assert applied == 1
     sql_calls = _execute_sql_calls(cur)
     assert not any("CREATE TABLE IF NOT EXISTS repos" in sql for sql in sql_calls)
-    assert not any(sql.startswith("INSERT INTO schema_migrations") for sql in sql_calls)
-    assert conn.commit.call_count == 1  # bootstrap only, no migration commit
+    assert any("open_issues" in sql for sql in sql_calls)
+    insert_calls = [
+        call for call in cur.execute.call_args_list
+        if call.args[0].startswith("INSERT INTO schema_migrations")
+    ]
+    assert len(insert_calls) == 1
+    assert insert_calls[0].args[1] == ("002_repo_open_issues_pushed_at",)
+    assert conn.commit.call_count == 2  # bootstrap + one pending migration
 
 
 def test_migrate_cmd_connects_and_applies(monkeypatch, capsys):

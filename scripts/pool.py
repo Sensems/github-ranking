@@ -17,6 +17,8 @@ def to_repo_record(raw: dict) -> dict:
         "language": raw.get("language"),
         "html_url": raw["html_url"],
         "created_at": raw["created_at"],
+        "open_issues": int(raw.get("open_issues_count") or 0),
+        "pushed_at": raw.get("pushed_at"),
     }
 
 

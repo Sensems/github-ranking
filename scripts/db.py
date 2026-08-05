@@ -34,11 +34,12 @@ def upsert_repo(conn, repo: dict) -> None:
             """
             INSERT INTO repos (
                 repo_id, repo_name, description, stars, forks, language,
-                html_url, created_at, readme_hash, backfilled_365, updated_at
+                html_url, created_at, readme_hash, backfilled_365, updated_at,
+                open_issues, pushed_at
             ) VALUES (
                 %(repo_id)s, %(repo_name)s, %(description)s, %(stars)s, %(forks)s,
                 %(language)s, %(html_url)s, %(created_at)s, %(readme_hash)s,
-                %(backfilled_365)s, %(updated_at)s
+                %(backfilled_365)s, %(updated_at)s, %(open_issues)s, %(pushed_at)s
             )
             ON CONFLICT (repo_id) DO UPDATE SET
                 repo_name = EXCLUDED.repo_name,
@@ -50,7 +51,9 @@ def upsert_repo(conn, repo: dict) -> None:
                 created_at = EXCLUDED.created_at,
                 readme_hash = COALESCE(EXCLUDED.readme_hash, repos.readme_hash),
                 backfilled_365 = COALESCE(EXCLUDED.backfilled_365, repos.backfilled_365),
-                updated_at = EXCLUDED.updated_at
+                updated_at = EXCLUDED.updated_at,
+                open_issues = EXCLUDED.open_issues,
+                pushed_at = EXCLUDED.pushed_at
             """,
 
             {
@@ -65,6 +68,8 @@ def upsert_repo(conn, repo: dict) -> None:
                 "readme_hash": repo.get("readme_hash"),
                 "backfilled_365": repo.get("backfilled_365"),
                 "updated_at": date.today(),
+                "open_issues": repo.get("open_issues", 0),
+                "pushed_at": repo.get("pushed_at"),
             },
         )
 
@@ -74,7 +79,8 @@ def load_repos(conn) -> dict[int, dict]:
         cur.execute(
             """
             SELECT repo_id, repo_name, description, stars, forks, language,
-                   html_url, created_at, readme_hash, backfilled_365, updated_at
+                   html_url, created_at, readme_hash, backfilled_365, updated_at,
+                   open_issues, pushed_at
             FROM repos
             """
         )
@@ -93,6 +99,8 @@ def load_repos(conn) -> dict[int, dict]:
                 "readme_hash": row[8],
                 "backfilled_365": _iso(row[9]),
                 "updated_at": _iso(row[10]),
+                "open_issues": row[11],
+                "pushed_at": _iso(row[12]),
             }
         return repos
 
