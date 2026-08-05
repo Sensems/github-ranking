@@ -45,6 +45,7 @@ jobs:
         run: npm run build --prefix frontend
 
       - name: Deploy to server
+        if: ${{ secrets.DEPLOY_HOST != '' && secrets.DEPLOY_USER != '' && secrets.DEPLOY_PATH != '' && secrets.SSH_PRIVATE_KEY != '' }}
         run: bash deploy/deploy.sh
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -52,6 +53,10 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           DEPLOY_RESTART_CMD: ${{ secrets.DEPLOY_RESTART_CMD }}
+
+      - name: Skip deploy (secrets not configured)
+        if: ${{ secrets.DEPLOY_HOST == '' || secrets.DEPLOY_USER == '' || secrets.DEPLOY_PATH == '' || secrets.SSH_PRIVATE_KEY == '' }}
+        run: echo "Deploy skipped — set DEPLOY_HOST, DEPLOY_USER, DEPLOY_PATH, SSH_PRIVATE_KEY to enable SSH deploy."
 
       - name: Notify on failure
         if: failure()

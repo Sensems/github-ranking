@@ -100,7 +100,7 @@ pm2 save
 | `XFYUN_API_KEY` | 讯飞星辰 MaaS API Key |
 | `XFYUN_BASE_URL` | 讯飞 API Base URL |
 | `XFYUN_MODEL` | 模型 ID（可选，默认 xsparkx2） |
-| `DEPLOY_HOST` | 部署目标主机 |
+| `DEPLOY_HOST` | 部署目标主机（未配置时 sync 会跳过 SSH 部署，仅写库） |
 | `DEPLOY_USER` | SSH 用户 |
 | `DEPLOY_PATH` | 远端部署目录（如 `/var/www/github-ranking`） |
 | `SSH_PRIVATE_KEY` | 部署用私钥 |

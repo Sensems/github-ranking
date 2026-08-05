@@ -8,8 +8,8 @@ set -euo pipefail
 #   pm2 restart github-ranking
 
 if [ -z "${SSH_PRIVATE_KEY:-}" ] || [ -z "${DEPLOY_HOST:-}" ] || [ -z "${DEPLOY_USER:-}" ] || [ -z "${DEPLOY_PATH:-}" ]; then
-  echo "Missing deploy env: SSH_PRIVATE_KEY / DEPLOY_HOST / DEPLOY_USER / DEPLOY_PATH" >&2
-  exit 1
+  echo "Deploy skipped: missing SSH_PRIVATE_KEY / DEPLOY_HOST / DEPLOY_USER / DEPLOY_PATH"
+  exit 0
 fi
 
 mkdir -p ~/.ssh
