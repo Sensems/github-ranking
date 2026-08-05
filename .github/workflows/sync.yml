@@ -33,9 +33,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          XFYUN_API_KEY: ${{ secrets.XFYUN_API_KEY }}
-          XFYUN_BASE_URL: ${{ secrets.XFYUN_BASE_URL }}
-          XFYUN_MODEL: ${{ secrets.XFYUN_MODEL || 'xsparkx2' }}
 
       - name: Notify on failure
         if: failure()

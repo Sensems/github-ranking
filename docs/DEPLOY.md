@@ -66,6 +66,10 @@ User=www-data
 WorkingDirectory=/var/www/github-ranking
 Environment=NUXT_DATABASE_URL=postgresql://nuxt_readonly:YOUR_PASSWORD@127.0.0.1:5432/github-ranking
 # 也可用 Environment=DATABASE_URL=...（getPool 回退）
+# 按需 AI 摘要按钮（Nitro）：
+# Environment=XFYUN_API_KEY=...
+# Environment=XFYUN_BASE_URL=https://spark-api-open.xf-yun.com/agent/v1/
+# Environment=XFYUN_MODEL=spark-x
 Environment=PORT=3000
 ExecStart=/usr/bin/node server/index.mjs
 Restart=on-failure
@@ -99,10 +103,17 @@ pm2 save
 |--------|------|
 | `DATABASE_URL` | Pipeline 读写 Postgres（`postgresql://user:pass@host:5432/github-ranking`）。可带 Prisma 风格 `?schema=public`，管道会自动去掉；推荐不写 `schema` |
 | `GH_TOKEN` | GitHub PAT（Actions secret）；workflow 映射为环境变量 `GITHUB_TOKEN` |
+| `NOTIFY_WEBHOOK` | （可选）失败告警 Webhook |
+
+**Actions `sync` 不再依赖 `XFYUN_*`**：每日管道只写观察集、快照与预计算榜单，不刷新 README、不批量生成 AI 摘要。
+
+按需摘要（榜单卡片按钮）在 **Nuxt Nitro 服务器** 上调用讯飞；请在服务器进程环境中配置（不要写进仓库）：
+
+| 环境变量 | 用途 |
+|----------|------|
 | `XFYUN_API_KEY` | 讯飞星火 / 星辰 API Key（APIpassword） |
 | `XFYUN_BASE_URL` | 如 `https://spark-api-open.xf-yun.com/agent/v1/` |
 | `XFYUN_MODEL` | 如 `spark-x`（可选） |
-| `NOTIFY_WEBHOOK` | （可选）失败告警 Webhook |
 
 前端部署不需要 `DEPLOY_*` / `SSH_PRIVATE_KEY`。
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 from datetime import date
-from typing import Callable
 
 import config
 import db
@@ -11,10 +10,7 @@ import migrate
 from config import (
     GITHUB_TOKEN,
     HISTORY_RETENTION_DAYS,
-    README_TRUNCATE_CHARS,
-    SUMMARY_BATCH_SIZE,
     WATCH_TOP_N,
-    XFYUN_API_KEY,
 )
 
 # Re-export for tests that monkeypatch main.DATABASE_URL
@@ -24,68 +20,19 @@ from growth import build_boards
 from pool import build_watch_set
 
 
-def candidate_ids(boards: dict[str, list[dict]]) -> set[int]:
-    ids: set[int] = set()
-    for items in boards.values():
-        for item in items:
-            ids.add(item["repo_id"])
-    return ids
-
-
-def pending_summaries(
-    repos: dict[int, dict],
-    boards: dict[str, list[dict]],
-    conn,
-    *,
-    load_readme: Callable = db.load_readme,
-    load_summary: Callable = db.load_summary,
-) -> list[dict]:
-    pending: list[dict] = []
-    for repo_id in candidate_ids(boards):
-        repo = repos[repo_id]
-        cached = load_summary(conn, repo_id)
-        if cached is not None and cached.get("readme_hash") == repo.get("readme_hash"):
-            continue
-        readme = load_readme(conn, repo_id)
-        if readme is None:
-            continue
-        pending.append({
-            "repo_id": repo_id,
-            "readme_excerpt": readme["excerpt"],
-            "readme_hash": repo.get("readme_hash"),
-        })
-    return pending[:SUMMARY_BATCH_SIZE]
-
-
-def refresh_readmes(
-    client: GitHubClient,
-    repos: dict[int, dict],
-    boards: dict[str, list[dict]],
-    conn,
-) -> None:
-    for repo_id in candidate_ids(boards):
-        repo = repos[repo_id]
-        content = client.fetch_readme(repo["repo_name"], README_TRUNCATE_CHARS)
-        new_hash = client.readme_hash(content)
-        if content is not None:
-            db.save_readme(conn, repo_id, new_hash, content)
-        repo["readme_hash"] = new_hash
-        db.upsert_repo(conn, repo)
-
-
 def sync() -> None:
     if not (DATABASE_URL or config.DATABASE_URL):
         raise SystemExit("DATABASE_URL is required")
 
     with db.connect() as conn:
-        print("[1/6] migrate")
+        print("[1/4] migrate")
         applied = migrate.migrate_up(conn)
         print(f"      applied migrations: {applied}")
 
         client = GitHubClient(GITHUB_TOKEN)
         today = date.today()
 
-        print("[2/6] build watch set + snapshots")
+        print("[2/4] build watch set + snapshots")
         existing = db.load_repos(conn)
         previous = db.load_previous_growth_members(conn)
         repos = build_watch_set(client, existing, previous, WATCH_TOP_N)
@@ -106,48 +53,11 @@ def sync() -> None:
         load_history = lambda rid: db.load_history(conn, rid)
         load_summary = lambda rid: db.load_summary(conn, rid)
 
-        print("[3/6] compute boards (first pass)")
-        boards = build_boards(
-            repos,
-            today,
-            load_history=load_history,
-            load_summary=load_summary,
-        )
-
-        print("[4/6] refresh README for board candidates")
-        refresh_readmes(client, repos, boards, conn)
-
-        print("[5/6] generate AI summaries")
-        pending = pending_summaries(repos, boards, conn)
-        if pending and XFYUN_API_KEY:
-            from summary import summarize_batch
-
-            results = summarize_batch(
-                pending,
-                XFYUN_API_KEY,
-                save_summary=lambda rid, s, rh: db.save_summary(conn, rid, s, rh),
-            )
-            ok = sum(1 for v in results.values() if v is not None)
-            print(f"      summarized: {ok} of {len(pending)}")
-        else:
-            print(
-                f"      skipped ({len(pending)} pending; "
-                f"XFYUN_API_KEY {'set' if XFYUN_API_KEY else 'not set'})"
-            )
-
-        print("[6/6] rebuild boards with summaries + save")
-        boards = build_boards(
-            repos,
-            today,
-            load_history=load_history,
-            load_summary=load_summary,
-        )
+        print("[3/4] compute boards")
+        boards = build_boards(repos, today, load_history=load_history, load_summary=load_summary)
+        print("[4/4] save leaderboards")
         for name, items in boards.items():
-            db.save_leaderboard(
-                conn,
-                name,
-                {"type": name, "generated_at": today.isoformat(), "items": items},
-            )
+            db.save_leaderboard(conn, name, {"type": name, "generated_at": today.isoformat(), "items": items})
         conn.commit()
         print("sync done")
 

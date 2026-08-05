@@ -29,7 +29,7 @@
 |------|------|
 | Search API 报 403 | Actions secret `GH_TOKEN`（映射为 `GITHUB_TOKEN`）过期或权限不足（需 public_repo 读权限） |
 | Sync 数据库错误 | `DATABASE_URL`、runner → Postgres 网络、migrate 是否成功 |
-| AI 摘要全部失败 | `XFYUN_API_KEY` / `XFYUN_BASE_URL` / `XFYUN_MODEL` 配置或额度 |
+| 按需 AI 摘要失败 | Nuxt 服务器进程的 `XFYUN_API_KEY` / `XFYUN_BASE_URL` / `XFYUN_MODEL` 配置或额度（与 Actions sync 无关） |
 | 构建失败 | 前端依赖变化，检查 `npm ci` / `npm run build` 日志 |
 | 部署失败 | SSH 密钥、`DEPLOY_*`、远端目录权限、`DEPLOY_RESTART_CMD` 单元名 |
 | 站点旧数据 | 确认 sync 成功且 deploy 步骤执行；查 DB `leaderboards.generated_at` |
@@ -51,14 +51,14 @@
 ## 讯飞额度对账
 
 - 官方控制台查看 tokens 消耗（免费额度以官方最新为准）
-- 摘要仅对进入任一榜单 Top 100 的仓库生成（批次上限 100/天）
-- 更换模型：只改 `XFYUN_MODEL` 与 `XFYUN_BASE_URL` Secret
+- **Actions `sync` 不再调用讯飞**；摘要仅在用户点击按需生成时由 Nuxt Nitro 调用
+- 更换模型：更新 Nuxt 服务器环境变量 `XFYUN_MODEL` 与 `XFYUN_BASE_URL` 后重启进程
 
 ## 模型/接口变更
 
 1. 核对讯飞官方文档（https://www.xfyun.cn/doc）
-2. 更新 Secrets
-3. 手动触发一次 sync，确认摘要成功率
+2. 更新 Nuxt 服务器上的 `XFYUN_*` 环境变量并重启 `github-ranking`
+3. 在站点上对某仓库点按需摘要，确认生成成功（无需重跑 sync）
 
 ## 仓库维护
 
