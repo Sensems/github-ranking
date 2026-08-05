@@ -14,10 +14,12 @@ export default defineNuxtConfig({
     },
   },
   runtimeConfig: {
+    databaseUrl: process.env.DATABASE_URL || '',
     public: {
       siteUrl: process.env.SITE_URL || 'https://github-trend.example.com',
     },
   },
+
   nitro: {
     prerender: {
       routes: ['/sitemap.xml'],
