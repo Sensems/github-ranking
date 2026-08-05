@@ -6,7 +6,7 @@
 - 计算 **日 / 周 / 月 / 年 / 总** 五维度榜单（Top 100）
 - 调用**讯飞星辰 MaaS（Astron）**大模型对榜单仓库生成中文摘要
 - **PostgreSQL** 为唯一数据源；**Nuxt 3 Nitro SSR** 提供页面与只读 API
-- **GitHub Actions** 每日 sync/backfill 写库并 SSH 部署前端到自建服务器
+- **GitHub Actions** 每日 sync/backfill 写库；**前端由运维自行部署**（Nuxt SSR）
 
 ## 目录结构
 
@@ -16,7 +16,7 @@ db/         SQL 迁移（db/migrations/）
 tests/      pytest 测试
 frontend/   Nuxt 3 SSR（app/ 为 srcDir；server/api 读 Postgres）
 deploy/     rsync 部署脚本与 nginx 示例
-.github/    sync.yml（每日同步+部署）、backfill.yml（历史回溯）
+.github/    sync.yml（每日同步写库）、backfill.yml（历史回溯）
 docs/       DEPLOY / OPERATIONS / ACCEPTANCE
 ```
 
@@ -71,17 +71,10 @@ python -m pytest
 本地跑 sync/backfill 请设置环境变量 `GITHUB_TOKEN`（`scripts/config.py` 只读该名，裸 `GH_TOKEN` 无效）。
 | `XFYUN_API_KEY` | 讯飞星辰 MaaS API Key |
 | `XFYUN_BASE_URL` | 讯飞 API Base URL |
-| `XFYUN_MODEL` | 模型 modelId（默认 xsparkx2） |
-| `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_PATH` / `SSH_PRIVATE_KEY` | SSH 部署 Nitro SSR，见 docs/DEPLOY.md |
-| `DEPLOY_RESTART_CMD` | （可选）默认 `systemctl restart github-ranking` |
+| `XFYUN_MODEL` | 模型 modelId（如 `spark-x`） |
 | `NOTIFY_WEBHOOK` | 失败告警 Webhook |
 
-仓库级变量（Settings → Variables）：
-
-| Variable | 默认值 |
-|----------|--------|
-| `SITE_URL` | `https://github-trend.example.com` |
-| `NUXT_APP_BASE_URL` | `/` |
+前端部署不经过 Actions；见 [docs/DEPLOY.md](docs/DEPLOY.md)。
 
 ## 文档
 

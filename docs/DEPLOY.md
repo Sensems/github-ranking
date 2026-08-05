@@ -4,15 +4,18 @@
 
 ```
 GitHub Actions（每日 08:00 北京时间）
-  → migrate → sync（写 Postgres）→ npm ci/build → SSH 部署 Nuxt SSR
+  → migrate → sync（写 Postgres）
   → backfill：migrate → 小批量回溯 365 天锚点（写 Postgres）
+
+前端部署：人工 / 自有脚本（本仓库不通过 Actions SSH 部署）
+  → 本机或服务器：npm ci && npm run build → 拷贝 frontend/.output/ → 重启 Node
 
 PostgreSQL（系统唯一数据源）
   ↑ 读写（Actions pipeline）  ↑ 只读（Nuxt Nitro）
 ```
 
 生产站点由服务器上的 **Nuxt Nitro（Node SSR）** 提供；nginx 反代到 `127.0.0.1:3000`。  
-**不再使用 GitHub Pages** 作为主路径；`data/` 历史文件不迁移，从空库重新积累。
+**不再使用 GitHub Pages**；**Daily Sync 只写库，不部署前端**。`data/` 历史不迁移，从空库重新积累。
 
 ## 0. 网络前置条件（上线前必须满足）
 
@@ -43,12 +46,12 @@ GitHub-hosted Actions runner 必须能 **TCP 连接** 到 Postgres 主机与端�
 ### 1.2 服务器
 
 1. 安装 Node 20+、nginx
-2. 创建部署目录，例如 `/var/www/github-ranking`（对应 `DEPLOY_PATH`）
-3. 在部署目录或 systemd/pm2 环境中配置 **运行时** DB URL（只读角色），**不要**在 `npm run build` 时依赖真实连接串。推荐设置 `NUXT_DATABASE_URL`（Nuxt runtimeConfig 标准覆盖）；也可设置 `DATABASE_URL`（`getPool()` 会回退读取）
+2. 创建部署目录，例如 `/var/www/github-ranking`
+3. 在部署目录或 systemd/pm2 环境中配置 **运行时** DB URL（只读角色），**不要**在 `npm run build` 时依赖真实连接串。推荐设置 `NUXT_DATABASE_URL`；也可设置 `DATABASE_URL`（`getPool()` 会回退读取）
 4. 参考 `deploy/nginx.conf.example` 配置反代到 `127.0.0.1:3000`
 5. 用 systemd 或 pm2 跑 Nitro，进程/单元名约定为 **`github-ranking`**
 
-> **入口路径**：`deploy/deploy.sh` 将 `frontend/.output/` **内容** rsync 到 `DEPLOY_PATH`，因此工作目录下入口是 `server/index.mjs`（不是 `.output/server/index.mjs`）。
+> **入口路径**：将 `frontend/.output/` **内容**放到部署目录后，工作目录入口是 `server/index.mjs`（不是 `.output/server/index.mjs`）。可选使用 `deploy/deploy.sh` 做本机 rsync（需自备环境变量，Actions 不会调用）。
 
 **systemd 示例**（`/etc/systemd/system/github-ranking.service`）：
 
@@ -88,31 +91,20 @@ pm2 start server/index.mjs --name github-ranking
 pm2 save
 ```
 
-### 1.3 SSH 与 GitHub Secrets
+### 1.3 GitHub Actions Secrets（仅管道写库）
 
-1. 生成 SSH 密钥对，公钥加入服务器 `~/.ssh/authorized_keys`
-2. 仓库 **Settings → Secrets and variables → Actions** 配置（勿把真实值写入仓库文件）：
+仓库 **Settings → Secrets and variables → Actions**（勿把真实值写入仓库）：
 
 | Secret | 用途 |
 |--------|------|
-| `DATABASE_URL` | Pipeline 读写 Postgres（`postgresql://user:pass@host:5432/github-ranking`）。可带 Prisma 风格 `?schema=public`，管道会自动去掉该参数；推荐不写 `schema` |
+| `DATABASE_URL` | Pipeline 读写 Postgres（`postgresql://user:pass@host:5432/github-ranking`）。可带 Prisma 风格 `?schema=public`，管道会自动去掉；推荐不写 `schema` |
 | `GH_TOKEN` | GitHub PAT（Actions secret）；workflow 映射为环境变量 `GITHUB_TOKEN` |
-| `XFYUN_API_KEY` | 讯飞星辰 MaaS API Key |
-| `XFYUN_BASE_URL` | 讯飞 API Base URL |
-| `XFYUN_MODEL` | 模型 ID（可选，默认 xsparkx2） |
-| `DEPLOY_HOST` | 部署目标主机（未配置时 sync 会跳过 SSH 部署，仅写库） |
-| `DEPLOY_USER` | SSH 用户 |
-| `DEPLOY_PATH` | 远端部署目录（如 `/var/www/github-ranking`） |
-| `SSH_PRIVATE_KEY` | 部署用私钥 |
-| `DEPLOY_RESTART_CMD` | （可选）默认 `systemctl restart github-ranking` |
+| `XFYUN_API_KEY` | 讯飞星火 / 星辰 API Key（APIpassword） |
+| `XFYUN_BASE_URL` | 如 `https://spark-api-open.xf-yun.com/agent/v1/` |
+| `XFYUN_MODEL` | 如 `spark-x`（可选） |
 | `NOTIFY_WEBHOOK` | （可选）失败告警 Webhook |
 
-仓库级变量（Settings → Variables，可留默认）：
-
-| Variable | 默认值 | 说明 |
-|----------|--------|------|
-| `SITE_URL` | `https://github-trend.example.com` | sitemap 绝对 URL |
-| `NUXT_APP_BASE_URL` | `/` | 域名根路径部署时为 `/` |
+前端部署不需要 `DEPLOY_*` / `SSH_PRIVATE_KEY`。
 
 ### 1.4 首次 migrate + sync
 
@@ -134,9 +126,24 @@ python scripts/main.py sync
 - **年榜** 在首日通常条目很少或为空（需多日快照 + backfill 365 天锚点），UI 显示「数据积累中」属正常
 - 第二次 sync 起，watch set 会合并前一日增长榜成员，行为逐渐稳定
 
-然后手动触发 **Daily Sync** workflow，确认 migrate → sync → build → deploy 全绿。
+然后手动触发 **Daily Sync** workflow，确认 migrate → sync 全绿（**不含**前端部署）。
 
-### 1.5 验收访问
+### 1.5 手动部署前端
+
+在能访问代码与服务器的机器上：
+
+```bash
+cd frontend
+npm ci
+npm run build
+# 将 .output/ 内容同步到服务器部署目录，例如：
+# rsync -az --delete .output/ user@host:/var/www/github-ranking/
+# 或本机：bash ../deploy/deploy.sh（需自行 export DEPLOY_* / SSH_PRIVATE_KEY）
+
+sudo systemctl restart github-ranking   # 或 pm2 restart github-ranking
+```
+
+### 1.6 验收访问
 
 - 站点 5 个榜单页可打开
 - `GET /api/health` 返回 DB 连通
@@ -144,10 +151,9 @@ python scripts/main.py sync
 
 ## 2. 构建与部署路径
 
-- CI：`npm ci` + `npm run build`（产出 `frontend/.output/`）
-- `deploy/deploy.sh` 以 `frontend/.output/`（尾斜杠）rsync **内容**到 `DEPLOY_PATH`（远端出现 `server/index.mjs`、`public/` 等），再执行 `DEPLOY_RESTART_CMD`
-- `baseURL` 默认 `/`；`SITE_URL` 用于 sitemap
-- DB URL 仅 **Nitro 进程运行时** 需要（推荐 `NUXT_DATABASE_URL`，或 `DATABASE_URL`），构建步骤不要求
+- **Actions**：只做 migrate + sync（写库）
+- **前端**：人工 `npm run build`，把 `frontend/.output/` 内容放到部署目录后重启 Node
+- DB URL 仅 **Nitro 进程运行时** 需要（推荐 `NUXT_DATABASE_URL`，或 `DATABASE_URL`）
 
 ## 3. 告警验证
 
