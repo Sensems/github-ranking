@@ -1,12 +1,35 @@
 """全局配置：常量与密钥入口。所有脚本只从这里读取配置。"""
 import os
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"
 
+
+def normalize_database_url(url: str) -> str:
+    """Strip Prisma-only query params (e.g. schema=public) that psycopg rejects."""
+    if not url or "?" not in url:
+        return url
+    parsed = urlparse(url)
+    if not parsed.query:
+        return url
+    kept: list[tuple[str, str]] = []
+    schema: str | None = None
+    for key, value in parse_qsl(parsed.query, keep_blank_values=True):
+        if key == "schema":
+            schema = value or None
+            continue
+        kept.append((key, value))
+    # public is the Postgres default; non-public schemas map to search_path.
+    if schema and schema != "public":
+        if not any(k == "options" and "search_path" in v for k, v in kept):
+            kept.append(("options", f"-csearch_path={schema}"))
+    return urlunparse(parsed._replace(query=urlencode(kept)))
+
+
 # Database
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+DATABASE_URL = normalize_database_url(os.environ.get("DATABASE_URL", ""))
 
 # GitHub
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")

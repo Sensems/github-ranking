@@ -95,7 +95,7 @@ pm2 save
 
 | Secret | 用途 |
 |--------|------|
-| `DATABASE_URL` | Pipeline 读写 Postgres（`postgresql://user:pass@host:5432/github-ranking`） |
+| `DATABASE_URL` | Pipeline 读写 Postgres（`postgresql://user:pass@host:5432/github-ranking`）。可带 Prisma 风格 `?schema=public`，管道会自动去掉该参数；推荐不写 `schema` |
 | `GH_TOKEN` | GitHub PAT（Actions secret）；workflow 映射为环境变量 `GITHUB_TOKEN` |
 | `XFYUN_API_KEY` | 讯飞星辰 MaaS API Key |
 | `XFYUN_BASE_URL` | 讯飞 API Base URL |
