@@ -62,6 +62,25 @@ def test_build_boards_sorts_filters_and_ranks():
     assert len(boards["weekly"]) == 0  # 7 天前无快照
 
 
+def test_board_item_exposes_meta_not_summary_body():
+    repo = {
+        "repo_id": 1, "repo_name": "a/b", "description": "d", "language": "Go",
+        "stars": 10, "forks": 2, "html_url": "https://github.com/a/b",
+        "created_at": "2020-01-01T00:00:00Z",
+        "open_issues": 3, "pushed_at": "2026-07-14T19:25:58Z",
+    }
+    growth_data = {"daily": 1, "weekly": 2, "monthly": 3, "yearly": 4}
+
+    def load_summary(rid):
+        return {"summary": {"project_positioning": "x"}, "readme_hash": "h"}
+
+    item = growth.board_item(repo, growth_data, 1, load_summary)
+    assert item["open_issues"] == 3
+    assert item["pushed_at"] == "2026-07-14T19:25:58Z"
+    assert item["has_summary"] is True
+    assert "summary" not in item
+
+
 def test_build_boards_total_uses_total_size():
     repos = {
         i: {

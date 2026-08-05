@@ -39,7 +39,7 @@ def eligible(repo: dict, window_days: int, today: date) -> bool:
 
 
 def board_item(repo: dict, growth: dict, rank: int, load_summary: Callable[[int], Optional[dict]]) -> dict:
-    summary = load_summary(repo["repo_id"])
+    cached = load_summary(repo["repo_id"])
     return {
         "rank": rank,
         "repo_id": repo["repo_id"],
@@ -49,8 +49,10 @@ def board_item(repo: dict, growth: dict, rank: int, load_summary: Callable[[int]
         "stars": repo["stars"],
         "forks": repo["forks"],
         "html_url": repo["html_url"],
+        "open_issues": int(repo.get("open_issues") or 0),
+        "pushed_at": repo.get("pushed_at"),
         "growth": growth,
-        "summary": summary["summary"] if summary else None,
+        "has_summary": cached is not None,
     }
 
 
