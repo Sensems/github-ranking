@@ -23,13 +23,15 @@
 
 **不再有** 每日 `data/` git 提交；仓库中的 `data/` 目录已退出版本控制（本地调试产物可 gitignore 忽略）。
 
+启用按需摘要后，Nuxt Nitro 不是完全只读客户端：其数据库角色应对 `repos`、`leaderboards`、`readmes`、`summaries` 有 `SELECT`，并对 `readmes`、`summaries` 有 `INSERT` / `UPDATE`。`POST /api/repos/:repoId/summary` 会缓存 README 和生成结果。
+
 ## 失败排查清单
 
 | 现象 | 排查 |
 |------|------|
 | Search API 报 403 | Actions secret `GH_TOKEN`（映射为 `GITHUB_TOKEN`）过期或权限不足（需 public_repo 读权限） |
 | Sync 数据库错误 | `DATABASE_URL`、runner → Postgres 网络、migrate 是否成功 |
-| 按需 AI 摘要失败 | Nuxt 服务器进程的 `XFYUN_API_KEY` / `XFYUN_BASE_URL` / `XFYUN_MODEL` 配置或额度（与 Actions sync 无关） |
+| 按需 AI 摘要失败 | Nuxt 服务器进程的 `NUXT_XFYUN_API_KEY` / `NUXT_XFYUN_BASE_URL` / `NUXT_XFYUN_MODEL`（推荐），或运行时 `XFYUN_API_KEY` / `XFYUN_BASE_URL` / `XFYUN_MODEL` 回退值、额度及 DB 写权限（与 Actions sync 无关） |
 | 构建失败 | 前端依赖变化，检查 `npm ci` / `npm run build` 日志 |
 | 部署失败 | SSH 密钥、`DEPLOY_*`、远端目录权限、`DEPLOY_RESTART_CMD` 单元名 |
 | 站点旧数据 | 确认 sync 成功且 deploy 步骤执行；查 DB `leaderboards.generated_at` |
@@ -52,12 +54,12 @@
 
 - 官方控制台查看 tokens 消耗（免费额度以官方最新为准）
 - **Actions `sync` 不再调用讯飞**；摘要仅在用户点击按需生成时由 Nuxt Nitro 调用
-- 更换模型：更新 Nuxt 服务器环境变量 `XFYUN_MODEL` 与 `XFYUN_BASE_URL` 后重启进程
+- 更换模型：更新 Nuxt 服务器环境变量 `NUXT_XFYUN_MODEL` 与 `NUXT_XFYUN_BASE_URL`（推荐；也兼容不带 `NUXT_` 的运行时变量）后重启进程
 
 ## 模型/接口变更
 
 1. 核对讯飞官方文档（https://www.xfyun.cn/doc）
-2. 更新 Nuxt 服务器上的 `XFYUN_*` 环境变量并重启 `github-ranking`
+2. 更新 Nuxt 服务器上的 `NUXT_XFYUN_*` 环境变量（推荐；运行时也兼容 `XFYUN_*`）并重启 `github-ranking`
 3. 在站点上对某仓库点按需摘要，确认生成成功（无需重跑 sync）
 
 ## 仓库维护

@@ -2,7 +2,7 @@ import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { getPool } from '../../../utils/db'
 
 export async function getRepoSummary(repoId: number) {
-  if (!Number.isFinite(repoId) || repoId <= 0) {
+  if (!Number.isSafeInteger(repoId) || repoId <= 0) {
     throw createError({ statusCode: 400, statusMessage: 'Invalid repo id' })
   }
 

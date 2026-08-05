@@ -24,6 +24,35 @@ export type XfyunConfig = {
   model: string
 }
 
+type RuntimeXfyunConfig = {
+  xfyunApiKey?: unknown
+  xfyunBaseUrl?: unknown
+  xfyunModel?: unknown
+}
+
+function nonEmptyString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+export function resolveXfyunConfig(runtime: RuntimeXfyunConfig): XfyunConfig {
+  return {
+    apiKey:
+      nonEmptyString(runtime.xfyunApiKey) ||
+      nonEmptyString(process.env.NUXT_XFYUN_API_KEY) ||
+      nonEmptyString(process.env.XFYUN_API_KEY),
+    baseUrl:
+      nonEmptyString(runtime.xfyunBaseUrl) ||
+      nonEmptyString(process.env.NUXT_XFYUN_BASE_URL) ||
+      nonEmptyString(process.env.XFYUN_BASE_URL) ||
+      'https://spark-api-open.xf-yun.com/agent/v1/',
+    model:
+      nonEmptyString(runtime.xfyunModel) ||
+      nonEmptyString(process.env.NUXT_XFYUN_MODEL) ||
+      nonEmptyString(process.env.XFYUN_MODEL) ||
+      'spark-x',
+  }
+}
+
 /** Join base URL to chat/completions without double slashes. */
 export function chatCompletionsUrl(baseUrl: string): string {
   return `${baseUrl.replace(/\/?$/, '/')}chat/completions`
@@ -47,6 +76,15 @@ export function parseSummaryContent(content: string): Summary {
   for (const key of SUMMARY_KEYS) {
     if (!(key in obj)) {
       throw new Error(`missing key: ${key}`)
+    }
+  }
+  if (typeof obj.project_positioning !== 'string') {
+    throw new Error('project_positioning must be a string')
+  }
+  for (const key of ['core_features', 'use_cases', 'tech_stack'] as const) {
+    const value = obj[key]
+    if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+      throw new Error(`${key} must be an array of strings`)
     }
   }
   return obj as Summary

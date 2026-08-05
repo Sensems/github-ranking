@@ -11,7 +11,7 @@ GitHub Actions（每日 08:00 北京时间）
   → 本机或服务器：npm ci && npm run build → 拷贝 frontend/.output/ → 重启 Node
 
 PostgreSQL（系统唯一数据源）
-  ↑ 读写（Actions pipeline）  ↑ 只读（Nuxt Nitro）
+  ↑ 读写（Actions pipeline）  ↑ 榜单读取 + 按需摘要写入（Nuxt Nitro）
 ```
 
 生产站点由服务器上的 **Nuxt Nitro（Node SSR）** 提供；nginx 反代到 `127.0.0.1:3000`。  
@@ -33,21 +33,21 @@ GitHub-hosted Actions runner 必须能 **TCP 连接** 到 Postgres 主机与端�
 角色建议（可选但推荐）：
 
 - **pipeline 用户**：读写（Actions `DATABASE_URL`）
-- **nuxt 用户**：只读（服务器进程 `DATABASE_URL`）
+- **nuxt 用户**：最小权限（服务器进程 `DATABASE_URL`）。启用按需摘要时，对 `repos`、`leaderboards`、`readmes`、`summaries` 有 `SELECT`，并对 `readmes`、`summaries` 有 `INSERT` / `UPDATE`
 
 ## 1. 首次配置（一次性）
 
 ### 1.1 数据库
 
 1. 创建数据库 `github-ranking`（schema `public`）
-2. 创建 pipeline 读写用户与 Nuxt 只读用户（或暂用同一用户，生产建议拆分）
+2. 创建 pipeline 读写用户与 Nuxt 最小权限用户（或暂用同一用户，生产建议拆分）。启用按需摘要时，Nuxt 用户不能是完全只读角色，权限按 §0 配置
 3. 确认 runner → Postgres 连通（见 §0）
 
 ### 1.2 服务器
 
 1. 安装 Node 20+、nginx
 2. 创建部署目录，例如 `/var/www/github-ranking`
-3. 在部署目录或 systemd/pm2 环境中配置 **运行时** DB URL（只读角色），**不要**在 `npm run build` 时依赖真实连接串。推荐设置 `NUXT_DATABASE_URL`；也可设置 `DATABASE_URL`（`getPool()` 会回退读取）
+3. 在部署目录或 systemd/pm2 环境中配置 **运行时** DB URL（Nuxt 最小权限角色），**不要**在 `npm run build` 时依赖真实连接串。推荐设置 `NUXT_DATABASE_URL`；也可设置 `DATABASE_URL`（`getPool()` 会回退读取）
 4. 参考 `deploy/nginx.conf.example` 配置反代到 `127.0.0.1:3000`
 5. 用 systemd 或 pm2 跑 Nitro，进程/单元名约定为 **`github-ranking`**
 
@@ -64,12 +64,13 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/var/www/github-ranking
-Environment=NUXT_DATABASE_URL=postgresql://nuxt_readonly:YOUR_PASSWORD@127.0.0.1:5432/github-ranking
+Environment=NUXT_DATABASE_URL=postgresql://nuxt_app:YOUR_PASSWORD@127.0.0.1:5432/github-ranking
 # 也可用 Environment=DATABASE_URL=...（getPool 回退）
 # 按需 AI 摘要按钮（Nitro）：
-# Environment=XFYUN_API_KEY=...
-# Environment=XFYUN_BASE_URL=https://spark-api-open.xf-yun.com/agent/v1/
-# Environment=XFYUN_MODEL=spark-x
+# Environment=NUXT_XFYUN_API_KEY=...
+# Environment=NUXT_XFYUN_BASE_URL=https://spark-api-open.xf-yun.com/agent/v1/
+# Environment=NUXT_XFYUN_MODEL=spark-x
+# 也兼容运行时 XFYUN_API_KEY / XFYUN_BASE_URL / XFYUN_MODEL
 Environment=PORT=3000
 ExecStart=/usr/bin/node server/index.mjs
 Restart=on-failure
@@ -111,9 +112,9 @@ pm2 save
 
 | 环境变量 | 用途 |
 |----------|------|
-| `XFYUN_API_KEY` | 讯飞星火 / 星辰 API Key（APIpassword） |
-| `XFYUN_BASE_URL` | 如 `https://spark-api-open.xf-yun.com/agent/v1/` |
-| `XFYUN_MODEL` | 如 `spark-x`（可选） |
+| `NUXT_XFYUN_API_KEY` | **推荐**。讯飞星火 / 星辰 API Key（APIpassword）；也兼容运行时 `XFYUN_API_KEY` |
+| `NUXT_XFYUN_BASE_URL` | **推荐**。如 `https://spark-api-open.xf-yun.com/agent/v1/`；也兼容运行时 `XFYUN_BASE_URL` |
+| `NUXT_XFYUN_MODEL` | **推荐**。如 `spark-x`（可选）；也兼容运行时 `XFYUN_MODEL` |
 
 前端部署不需要 `DEPLOY_*` / `SSH_PRIVATE_KEY`。
 
@@ -179,6 +180,6 @@ sudo systemctl restart github-ranking   # 或 pm2 restart github-ranking
 |------|------|
 | Sync 连不上库 | runner → Postgres 网络、`DATABASE_URL`、防火墙、TLS |
 | 部署后 502 | Node 是否监听 3000；`systemctl status github-ranking` 或 `pm2 status` |
-| API 5xx | 服务器进程是否配置了可读的 `NUXT_DATABASE_URL` / `DATABASE_URL`；入口是否为 `node server/index.mjs`；Postgres 是否可达 |
+| API 5xx | 服务器进程是否配置了 `NUXT_DATABASE_URL` / `DATABASE_URL`；Nuxt 角色是否有榜单读取及 `readmes` / `summaries` 所需权限；入口是否为 `node server/index.mjs`；Postgres 是否可达 |
 | 年榜长期为空 | 正常冷启动；确认 backfill workflow 在跑且 `repos.backfilled_365` 在增长 |
 | 仍看到 GitHub Pages | 产品路径已切换 SSR；Pages 可关闭或仅作镜像，非主路径 |

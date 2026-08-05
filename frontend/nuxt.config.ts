@@ -16,12 +16,10 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Overridden at runtime by NUXT_DATABASE_URL; db.ts also falls back to DATABASE_URL.
     databaseUrl: process.env.NUXT_DATABASE_URL || process.env.DATABASE_URL || '',
-    xfyunApiKey: process.env.NUXT_XFYUN_API_KEY || process.env.XFYUN_API_KEY || '',
-    xfyunBaseUrl:
-      process.env.NUXT_XFYUN_BASE_URL ||
-      process.env.XFYUN_BASE_URL ||
-      'https://spark-api-open.xf-yun.com/agent/v1/',
-    xfyunModel: process.env.NUXT_XFYUN_MODEL || process.env.XFYUN_MODEL || 'spark-x',
+    // NUXT_XFYUN_* overrides these at runtime; summary.ts also reads plain XFYUN_*.
+    xfyunApiKey: '',
+    xfyunBaseUrl: '',
+    xfyunModel: '',
     public: {
       siteUrl: process.env.SITE_URL || 'https://github-trend.example.com',
     },
