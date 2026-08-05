@@ -21,8 +21,10 @@ export interface LeaderboardItem {
   stars: number
   forks: number
   html_url: string
+  open_issues?: number
+  pushed_at?: string | null
   growth: Growth
-  summary: Summary | null
+  has_summary?: boolean
 }
 
 export interface LeaderboardPayload {

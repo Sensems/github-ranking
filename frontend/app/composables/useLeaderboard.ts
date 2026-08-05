@@ -10,11 +10,6 @@ export function useLeaderboard(items: LeaderboardItem[], boardType: BoardType) {
     [...new Set(items.map((i) => i.language).filter((l): l is string => Boolean(l)))].sort(),
   )
 
-  const summaryText = (item: LeaderboardItem): string =>
-    item.summary
-      ? [item.summary.project_positioning, ...item.summary.core_features, ...item.summary.use_cases, ...item.summary.tech_stack].join(' ')
-      : ''
-
   const filtered = computed(() => {
     let list = items
     if (language.value) {
@@ -23,7 +18,7 @@ export function useLeaderboard(items: LeaderboardItem[], boardType: BoardType) {
     const q = query.value.trim().toLowerCase()
     if (q) {
       list = list.filter((i) =>
-        [i.repo_name, i.description, summaryText(i)].join(' ').toLowerCase().includes(q),
+        [i.repo_name, i.description].join(' ').toLowerCase().includes(q),
       )
     }
     return list

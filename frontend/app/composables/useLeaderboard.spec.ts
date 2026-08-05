@@ -13,7 +13,7 @@ function item(partial: Partial<LeaderboardItem>): LeaderboardItem {
     forks: 1,
     html_url: 'https://github.com/a/b',
     growth: { daily: 1, weekly: 2, monthly: 3, yearly: 4 },
-    summary: null,
+    has_summary: false,
     ...partial,
   }
 }
@@ -22,11 +22,12 @@ const items = [
   item({
     repo_id: 1,
     repo_name: 'vuejs/core',
+    description: '渐进式前端框架',
     language: 'TypeScript',
     stars: 100,
     forks: 20,
     growth: { daily: 10, weekly: 30, monthly: 60, yearly: 300 },
-    summary: { project_positioning: '前端框架', core_features: ['响应式'], use_cases: ['Web'], tech_stack: ['TS'] },
+    has_summary: true,
   }),
   item({
     repo_id: 2,
@@ -45,10 +46,13 @@ describe('useLeaderboard', () => {
     expect(lb.sorted.value.map((i) => i.repo_id)).toEqual([2])
   })
 
-  it('searches repo name, description and summary text', () => {
+  it('searches repo name and description only', () => {
     const lb = useLeaderboard(items, 'daily')
-    lb.query.value = '响应式'
+    lb.query.value = '渐进式'
     expect(lb.sorted.value.map((i) => i.repo_id)).toEqual([1])
+
+    lb.query.value = '响应式'
+    expect(lb.sorted.value.map((i) => i.repo_id)).toEqual([])
   })
 
   it('sorts by growth of the active board', () => {
