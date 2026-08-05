@@ -162,7 +162,10 @@ def backfill() -> None:
         migrate.migrate_up(conn)
         client = GitHubClient(GITHUB_TOKEN)
         today = date.today()
-        repos = db.load_repos(conn)
+        existing = db.load_repos(conn)
+        previous = db.load_previous_growth_members(conn)
+        # Same G2 watch set as sync — fallen-out repos are not backfill candidates.
+        repos = build_watch_set(client, existing, previous, WATCH_TOP_N)
         load_history = lambda rid: db.load_history(conn, rid)
         load_summary = lambda rid: db.load_summary(conn, rid)
         boards = build_boards(

@@ -292,3 +292,72 @@ def test_sync_does_not_snapshot_fallen_out_repos(monkeypatch):
     main.sync()
     assert 99 not in store["snapshotted"]
     assert 1 in store["snapshotted"]
+
+
+def test_backfill_skips_historical_non_g2_repos(monkeypatch):
+    """Fallen-out repos must not enter backfill_batch via boards from full load_repos."""
+    monkeypatch.setattr(main, "DATABASE_URL", "postgresql://test/db")
+    monkeypatch.setattr(config, "DATABASE_URL", "postgresql://test/db")
+
+    store = {
+        "repos": {
+            99: {
+                "repo_id": 99, "repo_name": "old/fallen", "description": "", "stars": 9000,
+                "forks": 0, "language": "Go", "html_url": "https://github.com/old/fallen",
+                "created_at": "2018-01-01T00:00:00Z", "readme_hash": None,
+                "backfilled_365": None,
+            },
+            1: {
+                "repo_id": 1, "repo_name": "a/b", "description": "", "stars": 2000,
+                "forks": 0, "language": "Python", "html_url": "https://github.com/a/b",
+                "created_at": "2020-01-01T00:00:00Z", "readme_hash": None,
+                "backfilled_365": None,
+            },
+        },
+        "history": {},
+        "previous": set(),
+        "snapshotted": [],
+        "stargazer_queries": [],
+    }
+    conn = MagicMock()
+    cm = MagicMock()
+    cm.__enter__.return_value = conn
+    cm.__exit__.return_value = False
+    monkeypatch.setattr(db, "connect", lambda: cm)
+    monkeypatch.setattr(db, "load_repos", lambda c: {k: dict(v) for k, v in store["repos"].items()})
+    monkeypatch.setattr(db, "load_previous_growth_members", lambda c: set(store["previous"]))
+    monkeypatch.setattr(db, "load_history", lambda c, rid: list(store["history"].get(rid, [])))
+    monkeypatch.setattr(db, "load_summary", lambda c, rid: None)
+    monkeypatch.setattr(
+        db,
+        "upsert_snapshot",
+        lambda c, rid, when, stars, forks: store["snapshotted"].append(rid),
+    )
+    monkeypatch.setattr(db, "upsert_repo", lambda c, repo: store["repos"].__setitem__(repo["repo_id"], dict(repo)))
+    monkeypatch.setattr(migrate, "migrate_up", MagicMock(return_value=0))
+
+    class FakeClient:
+        def __init__(self, token=""):
+            pass
+
+        def top_repos_by_stars(self, limit):
+            return [{
+                "id": 1, "full_name": "a/b", "description": "d", "stargazers_count": 2000,
+                "forks_count": 1, "language": "Python", "html_url": "https://github.com/a/b",
+                "created_at": "2020-01-01T00:00:00Z",
+            }]
+
+        def search(self, query, per_page=100, page=1):
+            return {"items": []}
+
+        def stargazer_count_at(self, repo_name, before):
+            store["stargazer_queries"].append(repo_name)
+            return 100
+
+    monkeypatch.setattr(main, "GitHubClient", FakeClient)
+    main.backfill()
+
+    assert "old/fallen" not in store["stargazer_queries"]
+    assert 99 not in store["snapshotted"]
+    assert "a/b" in store["stargazer_queries"]
+    assert 1 in store["snapshotted"]
