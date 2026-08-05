@@ -1,4 +1,3 @@
-import sys
 from unittest.mock import MagicMock
 
 import pytest
@@ -52,20 +51,21 @@ def test_migrate_up_skips_already_applied():
 
 
 def test_migrate_cmd_connects_and_applies(monkeypatch, capsys):
+    import db
+
     monkeypatch.setattr(config, "DATABASE_URL", "postgresql://test/db")
 
     mock_conn = MagicMock()
-    fake_psycopg = MagicMock()
-    fake_psycopg.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
-    fake_psycopg.connect.return_value.__exit__ = MagicMock(return_value=False)
-    monkeypatch.setitem(sys.modules, "psycopg", fake_psycopg)
+    cm = MagicMock()
+    cm.__enter__.return_value = mock_conn
+    cm.__exit__.return_value = False
+    monkeypatch.setattr(db, "connect", lambda: cm)
 
     mock_migrate_up = MagicMock(return_value=1)
     monkeypatch.setattr(migrate, "migrate_up", mock_migrate_up)
 
     main.migrate_cmd()
 
-    fake_psycopg.connect.assert_called_once_with("postgresql://test/db")
     mock_migrate_up.assert_called_once_with(mock_conn)
     assert capsys.readouterr().out.strip() == "Applied 1 migration(s)"
 

@@ -5,7 +5,8 @@ import json
 from datetime import date
 from typing import TYPE_CHECKING
 
-from config import DATABASE_URL, HISTORY_RETENTION_DAYS
+import config
+from config import HISTORY_RETENTION_DAYS
 
 if TYPE_CHECKING:
     import psycopg
@@ -16,7 +17,7 @@ GROWTH_BOARD_TYPES = ("daily", "weekly", "monthly", "yearly")
 def connect() -> "psycopg.Connection":
     import psycopg
 
-    return psycopg.connect(DATABASE_URL)
+    return psycopg.connect(config.DATABASE_URL)
 
 
 def _iso(value: date | str | None) -> str | None:
@@ -47,10 +48,11 @@ def upsert_repo(conn, repo: dict) -> None:
                 language = EXCLUDED.language,
                 html_url = EXCLUDED.html_url,
                 created_at = EXCLUDED.created_at,
-                readme_hash = EXCLUDED.readme_hash,
-                backfilled_365 = EXCLUDED.backfilled_365,
+                readme_hash = COALESCE(EXCLUDED.readme_hash, repos.readme_hash),
+                backfilled_365 = COALESCE(EXCLUDED.backfilled_365, repos.backfilled_365),
                 updated_at = EXCLUDED.updated_at
             """,
+
             {
                 "repo_id": repo["repo_id"],
                 "repo_name": repo["repo_name"],

@@ -1,6 +1,5 @@
 import pytest
 
-import data_files as df
 import summary
 
 
@@ -40,10 +39,22 @@ class OkClient:
     chat = type("Chat", (), {"completions": Completions()})()
 
 
-def test_summarize_batch_writes_cache(tmp_path, monkeypatch):
-    monkeypatch.setattr(df, "DATA_DIR", tmp_path)
-    items = [{"repo_id": 1, "readme_excerpt": "readme-1"}, {"repo_id": 2, "readme_excerpt": "readme-2"}]
-    results = summary.summarize_batch(items, "fake-key", client_factory=lambda api_key: OkClient())
+def test_summarize_batch_writes_cache():
+    saved = {}
+
+    def save_summary(repo_id, summary_dict, readme_hash):
+        saved[repo_id] = {"summary": summary_dict, "readme_hash": readme_hash}
+
+    items = [
+        {"repo_id": 1, "readme_excerpt": "readme-1", "readme_hash": "h1"},
+        {"repo_id": 2, "readme_excerpt": "readme-2", "readme_hash": "h2"},
+    ]
+    results = summary.summarize_batch(
+        items,
+        "fake-key",
+        client_factory=lambda api_key: OkClient(),
+        save_summary=save_summary,
+    )
     assert results[1]["project_positioning"] == "p"
-    assert df.load_summary(1)["summary"]["project_positioning"] == "p"
-    assert df.load_summary(2)["summary"] is not None
+    assert saved[1]["summary"]["project_positioning"] == "p"
+    assert saved[2]["summary"] is not None

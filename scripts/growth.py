@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Optional
+from typing import Callable, Optional
 
-from config import LEADERBOARD_SIZE, PARTICIPATION_MIN_STARS, TOLERANCE_DAYS, WINDOWS
-from data_files import load_history, load_summary
+from config import LEADERBOARD_SIZE, PARTICIPATION_MIN_STARS, TOLERANCE_DAYS, TOTAL_BOARD_SIZE, WINDOWS
 
 
 def parse_date(value: str) -> date:
@@ -39,7 +38,7 @@ def eligible(repo: dict, window_days: int, today: date) -> bool:
     return age >= window_days
 
 
-def board_item(repo: dict, growth: dict, rank: int) -> dict:
+def board_item(repo: dict, growth: dict, rank: int, load_summary: Callable[[int], Optional[dict]]) -> dict:
     summary = load_summary(repo["repo_id"])
     return {
         "rank": rank,
@@ -55,21 +54,30 @@ def board_item(repo: dict, growth: dict, rank: int) -> dict:
     }
 
 
-def build_boards(repos: dict[int, dict], today: date) -> dict[str, list[dict]]:
+def build_boards(
+    repos: dict[int, dict],
+    today: date,
+    *,
+    load_history: Callable[[int], list[dict]],
+    load_summary: Callable[[int], Optional[dict]],
+    total_size: int = TOTAL_BOARD_SIZE,
+    board_size: int = LEADERBOARD_SIZE,
+) -> dict[str, list[dict]]:
     boards: dict[str, list[dict]] = {name: [] for name in ["total", *WINDOWS.keys()]}
     for repo in repos.values():
         hist = load_history(repo["repo_id"])
         g = compute_growth(repo["stars"], hist, today)
-        boards["total"].append(board_item(repo, g, 0))
+        boards["total"].append(board_item(repo, g, 0, load_summary))
         for name, days in WINDOWS.items():
             if g[name] is not None and eligible(repo, days, today):
-                boards[name].append(board_item(repo, g, 0))
+                boards[name].append(board_item(repo, g, 0, load_summary))
     for name in boards:
         if name == "total":
             boards[name].sort(key=lambda it: it["stars"], reverse=True)
+            boards[name] = boards[name][:total_size]
         else:
             boards[name].sort(key=lambda it: it["growth"][name], reverse=True)
-        boards[name] = boards[name][:LEADERBOARD_SIZE]
+            boards[name] = boards[name][:board_size]
         for i, item in enumerate(boards[name], start=1):
             item["rank"] = i
     return boards

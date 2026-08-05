@@ -1,4 +1,4 @@
-"""候选池维护：Top-N 迭代搜索 + 新晋仓库补充 + 合并。"""
+"""候选池维护：Top-N 迭代搜索 + 新晋仓库补充 + G2 watch set。"""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -37,14 +37,38 @@ def merge_pool(existing: dict[int, dict], fresh: dict[int, dict], newcomers: dic
     return merged
 
 
+def _preserve_db_fields(repo: dict, existing_row: dict | None) -> dict:
+    """Keep DB-only fields when fresh GitHub metadata overwrites a repo."""
+    if existing_row is None:
+        return repo
+    if repo.get("readme_hash") is None:
+        repo["readme_hash"] = existing_row.get("readme_hash")
+    if repo.get("backfilled_365") is None:
+        repo["backfilled_365"] = existing_row.get("backfilled_365")
+    return repo
+
+
 def build_watch_set(
     client: GitHubClient,
     existing: dict[int, dict],
     previous_ids: set[int],
     limit: int = WATCH_TOP_N,
 ) -> dict[int, dict]:
-    merged = merge_pool(existing, fetch_pool(client, limit), fetch_newcomers(client))
-    for rid in previous_ids:
-        if rid in existing and rid not in merged:
-            merged[rid] = existing[rid]
+    """True G2: Top-N ∪ newcomers ∪ previous growth members (with metadata).
+
+    Does not retain historical repos that fell out of those three sources.
+    """
+    top = fetch_pool(client, limit)
+    newcomers = fetch_newcomers(client)
+    g2_ids = set(top) | set(newcomers) | {rid for rid in previous_ids if rid in existing}
+
+    merged: dict[int, dict] = {}
+    for rid in g2_ids:
+        if rid in newcomers:
+            merged[rid] = dict(newcomers[rid])
+        elif rid in top:
+            merged[rid] = dict(top[rid])
+        else:
+            merged[rid] = dict(existing[rid])
+        _preserve_db_fields(merged[rid], existing.get(rid))
     return merged

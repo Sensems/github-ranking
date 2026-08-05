@@ -81,3 +81,30 @@ def test_build_watch_set_skips_previous_without_existing_metadata():
     result = pool.build_watch_set(FakeClient(), existing={}, previous_ids={99})
     assert 99 not in result
     assert 1 in result
+
+
+def test_build_watch_set_excludes_historical_non_members():
+    """Repos that fell out of Top500/newcomers/previous must not remain in G2."""
+    class FakeClient:
+        def top_repos_by_stars(self, limit):
+            return [raw_repo(1, "a/a", 5000)]
+
+        def search(self, query, per_page=100, page=1):
+            return {"items": []}
+
+    existing = {
+        1: {"repo_id": 1, "repo_name": "a/a", "stars": 4000, "readme_hash": "keep",
+            "backfilled_365": "2025-01-01", "description": "", "forks": 1,
+            "language": "Python", "html_url": "https://github.com/a/a",
+            "created_at": "2020-01-01T00:00:00Z"},
+        99: {"repo_id": 99, "repo_name": "old/x", "stars": 10, "readme_hash": "x",
+             "backfilled_365": None, "description": "", "forks": 0,
+             "language": "Go", "html_url": "https://github.com/old/x",
+             "created_at": "2018-01-01T00:00:00Z"},
+    }
+    result = pool.build_watch_set(FakeClient(), existing, previous_ids=set())
+    assert 99 not in result
+    assert 1 in result
+    assert result[1]["stars"] == 5000
+    assert result[1]["readme_hash"] == "keep"
+    assert result[1]["backfilled_365"] == "2025-01-01"

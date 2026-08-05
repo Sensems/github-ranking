@@ -40,6 +40,20 @@ def test_upsert_snapshot_sql_uses_on_conflict():
     assert "EXCLUDED.forks" in sql_calls[0]
 
 
+def test_upsert_repo_preserves_null_readme_and_backfill_fields():
+    conn, cur = _mock_conn()
+
+    db.upsert_repo(conn, {
+        "repo_id": 1, "repo_name": "o/r", "description": "", "stars": 10, "forks": 1,
+        "language": "Python", "html_url": "https://github.com/o/r",
+        "created_at": "2020-01-01T00:00:00Z",
+    })
+
+    sql = _execute_sql_calls(cur)[0]
+    assert "COALESCE(EXCLUDED.readme_hash, repos.readme_hash)" in sql
+    assert "COALESCE(EXCLUDED.backfilled_365, repos.backfilled_365)" in sql
+
+
 @integration
 def test_snapshot_upsert_idempotent():
     with db.connect() as conn:
