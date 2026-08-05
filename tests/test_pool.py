@@ -35,13 +35,18 @@ def test_fetch_newcomers_queries_recent_created():
     captured = {}
 
     class FakeClient:
-        def search(self, query, per_page=100, page=1):
+        def search(self, query, per_page=100, page=1, *, sort=None, order=None):
             captured["query"] = query
+            captured["sort"] = sort
+            captured["order"] = order
             return {"items": [raw_repo(9, "new/proj", 600)]}
 
     result = pool.fetch_newcomers(FakeClient())
     assert "created:>=" in captured["query"]
     assert "stars:>=500" in captured["query"]
+    assert "sort:" not in captured["query"]
+    assert captured["sort"] == "stars"
+    assert captured["order"] == "desc"
     assert result[9]["repo_name"] == "new/proj"
 
 
@@ -51,7 +56,7 @@ def test_build_watch_set_unions_top_newcomers_and_previous(monkeypatch):
             assert limit == 500
             return [raw_repo(1, "a/a", 5000)]
 
-        def search(self, query, per_page=100, page=1):
+        def search(self, query, per_page=100, page=1, **kwargs):
             return {"items": []}
 
         def get_repo_by_id(self, repo_id):
@@ -80,7 +85,7 @@ def test_build_watch_set_refreshes_previous_only_stars(monkeypatch):
         def top_repos_by_stars(self, limit):
             return [raw_repo(1, "a/a", 5000)]
 
-        def search(self, query, per_page=100, page=1):
+        def search(self, query, per_page=100, page=1, **kwargs):
             return {"items": []}
 
         def get_repo_by_id(self, repo_id):
@@ -105,7 +110,7 @@ def test_build_watch_set_skips_previous_without_existing_metadata():
         def top_repos_by_stars(self, limit):
             return [raw_repo(1, "a/a", 5000)]
 
-        def search(self, query, per_page=100, page=1):
+        def search(self, query, per_page=100, page=1, **kwargs):
             return {"items": []}
 
         def get_repo_by_id(self, repo_id):
@@ -122,7 +127,7 @@ def test_build_watch_set_excludes_historical_non_members():
         def top_repos_by_stars(self, limit):
             return [raw_repo(1, "a/a", 5000)]
 
-        def search(self, query, per_page=100, page=1):
+        def search(self, query, per_page=100, page=1, **kwargs):
             return {"items": []}
 
         def get_repo_by_id(self, repo_id):

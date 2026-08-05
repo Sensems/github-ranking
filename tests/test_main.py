@@ -174,7 +174,7 @@ def test_sync_end_to_end_with_fakes(monkeypatch):
         def top_repos_by_stars(self, limit):
             return [raw_repo(1, "a/b", 2000), raw_repo(2, "c/d", 1500)]
 
-        def search(self, query, per_page=100, page=1):
+        def search(self, query, per_page=100, page=1, **kwargs):
             return {"items": []}
 
         def get_repo_by_id(self, repo_id):
@@ -282,7 +282,7 @@ def test_sync_does_not_snapshot_fallen_out_repos(monkeypatch):
                 "created_at": "2020-01-01T00:00:00Z",
             }]
 
-        def search(self, query, per_page=100, page=1):
+        def search(self, query, per_page=100, page=1, **kwargs):
             return {"items": []}
 
         def get_repo_by_id(self, repo_id):
@@ -353,7 +353,7 @@ def test_backfill_skips_historical_non_g2_repos(monkeypatch):
                 "created_at": "2020-01-01T00:00:00Z",
             }]
 
-        def search(self, query, per_page=100, page=1):
+        def search(self, query, per_page=100, page=1, **kwargs):
             return {"items": []}
 
         def get_repo_by_id(self, repo_id):

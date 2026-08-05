@@ -26,8 +26,11 @@ def fetch_pool(client: GitHubClient, limit: int = POOL_SIZE) -> dict[int, dict]:
 
 def fetch_newcomers(client: GitHubClient) -> dict[int, dict]:
     since = (date.today() - timedelta(days=NEWCOMER_DAYS)).isoformat()
-    query = f"stars:>={NEWCOMER_MIN_STARS} created:>={since} sort:stars desc"
-    return {r["id"]: to_repo_record(r) for r in client.search(query).get("items", [])}
+    query = f"stars:>={NEWCOMER_MIN_STARS} created:>={since}"
+    return {
+        r["id"]: to_repo_record(r)
+        for r in client.search(query, sort="stars", order="desc").get("items", [])
+    }
 
 
 def merge_pool(existing: dict[int, dict], fresh: dict[int, dict], newcomers: dict[int, dict]) -> dict[int, dict]:

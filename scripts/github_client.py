@@ -2,27 +2,63 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from typing import Optional
 
 import requests
 
 SEARCH_URL = "https://api.github.com/search/repositories"
 REPO_BY_ID_URL = "https://api.github.com/repositories/{repo_id}"
+# Search API returns at most 1000 results (10 pages × 100) per query window.
+SEARCH_MAX_PAGES = 10
+SEARCH_PER_PAGE = 100
 
 
 class GitHubClient:
-    def __init__(self, token: str = "", session: Optional[requests.Session] = None) -> None:
+    def __init__(
+        self,
+        token: str = "",
+        session: Optional[requests.Session] = None,
+        *,
+        search_retry_wait_s: float = 60.0,
+        search_max_retries: int = 3,
+    ) -> None:
         self.headers = {"Authorization": f"Bearer {token}"} if token else {}
         self.session = session or requests.Session()
+        self.search_retry_wait_s = search_retry_wait_s
+        self.search_max_retries = search_max_retries
 
-    def search(self, query: str, per_page: int = 100, page: int = 1) -> dict:
-        resp = self.session.get(
-            SEARCH_URL,
-            params={"q": query, "per_page": per_page, "page": page},
-            headers=self.headers,
-        )
-        resp.raise_for_status()
-        return resp.json()
+    def search(
+        self,
+        query: str,
+        per_page: int = SEARCH_PER_PAGE,
+        page: int = 1,
+        *,
+        sort: Optional[str] = None,
+        order: Optional[str] = None,
+    ) -> dict:
+        params: dict = {"q": query, "per_page": per_page, "page": page}
+        if sort is not None:
+            params["sort"] = sort
+        if order is not None:
+            params["order"] = order
+        last_exc: Optional[requests.HTTPError] = None
+        for attempt in range(self.search_max_retries + 1):
+            resp = self.session.get(
+                SEARCH_URL,
+                params=params,
+                headers=self.headers,
+            )
+            if resp.status_code != 403 or attempt >= self.search_max_retries:
+                resp.raise_for_status()
+                return resp.json()
+            last_exc = requests.HTTPError(
+                f"{resp.status_code} Client Error: {resp.reason} for url: {resp.url}",
+                response=resp,
+            )
+            # Secondary rate limit — wait then retry.
+            time.sleep(self.search_retry_wait_s)
+        raise last_exc  # pragma: no cover
 
     def get_repo_by_id(self, repo_id: int) -> dict:
         """Fetch current repository metadata (including stargazers_count) by numeric id."""
@@ -34,22 +70,43 @@ class GitHubClient:
         return resp.json()
 
     def top_repos_by_stars(self, limit: int) -> list[dict]:
-        """迭代下探收集 Top-N（按 stars 降序）。单次查询最多 1000 条。"""
+        """收集 Top-N（按 stars 降序）。
+
+        先对同一 query 翻页（最多 1000 条），不足再以 stars:<floor 下探窗口。
+        sort/order 是 Search API 独立参数，不能写进 q。
+        """
         results: list[dict] = []
         seen: set[int] = set()
         upper: Optional[int] = None
         while len(results) < limit:
-            query = "stars:>0 sort:stars desc" if upper is None else f"stars:<{upper} sort:stars desc"
-            items = self.search(query).get("items", [])
-            if not items:
+            query = "stars:>0" if upper is None else f"stars:<{upper}"
+            window_min: Optional[int] = None
+            got_new = False
+            for page in range(1, SEARCH_MAX_PAGES + 1):
+                if len(results) >= limit:
+                    break
+                items = self.search(
+                    query, per_page=SEARCH_PER_PAGE, page=page, sort="stars", order="desc"
+                ).get("items", [])
+                if not items:
+                    break
+                new = [r for r in items if r["id"] not in seen]
+                if not new:
+                    break
+                for r in new:
+                    seen.add(r["id"])
+                results.extend(new)
+                got_new = True
+                page_min = min(r["stargazers_count"] for r in new)
+                window_min = page_min if window_min is None else min(window_min, page_min)
+                if len(items) < SEARCH_PER_PAGE:
+                    break
+            if not got_new or window_min is None:
                 break
-            new = [r for r in items if r["id"] not in seen]
-            for r in new:
-                seen.add(r["id"])
-            if not new:
+            if len(results) >= limit:
                 break
-            results.extend(new)
-            upper = min(r["stargazers_count"] for r in new)
+            # Next search window below the lowest star count seen so far.
+            upper = window_min
         return results[:limit]
 
     def fetch_readme(self, repo_name: str, truncate_chars: int = 30_000) -> Optional[str]:

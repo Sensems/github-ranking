@@ -4,13 +4,18 @@ import github_client as gc
 
 
 class FakeResponse:
-    def __init__(self, payload):
+    def __init__(self, payload, status_code=200):
         self._payload = payload
+        self.status_code = status_code
+        self.reason = "OK" if status_code == 200 else "Error"
+        self.url = "https://api.github.com/search/repositories"
 
     def json(self):
         return self._payload
 
     def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"{self.status_code} error", response=self)
         return None
 
 
@@ -33,10 +38,49 @@ def repo(i, stars):
             "html_url": f"https://github.com/owner/repo{i}", "created_at": "2020-01-01T00:00:00Z"}
 
 
+def test_top_repos_uses_sort_and_order_query_params():
+    """GitHub Search sorts via sort=/order=, not qualifiers inside q."""
+    calls = []
+
+    class FakeSession:
+        def get(self, url, params=None, headers=None):
+            calls.append(params)
+            return FakeResponse({"items": [repo(1, 999)]})
+
+    client = gc.GitHubClient(session=FakeSession(), search_max_retries=0)
+    client.top_repos_by_stars(1)
+    assert calls, "expected a search request"
+    params = calls[0]
+    assert params["q"] == "stars:>0"
+    assert params["page"] == 1
+    assert "sort:" not in params["q"]
+    assert params["sort"] == "stars"
+    assert params["order"] == "desc"
+
+
+def test_top_repos_paginates_before_lowering_star_window():
+    calls = []
+
+    class FakeSession:
+        def get(self, url, params=None, headers=None):
+            calls.append(dict(params or {}))
+            page = params["page"]
+            # 100 items per page so pagination continues within the same q.
+            start = (page - 1) * 100
+            batch = [repo(start + i + 1, 10_000 - start - i) for i in range(100)]
+            return FakeResponse({"items": batch})
+
+    client = gc.GitHubClient(session=FakeSession(), search_max_retries=0)
+    result = client.top_repos_by_stars(250)
+    assert len(result) == 250
+    assert [c["page"] for c in calls] == [1, 2, 3]
+    assert all(c["q"] == "stars:>0" for c in calls)
+
+
 def test_top_repos_collects_limit_and_dedupes():
     first = [repo(i, 1000 - i) for i in range(1, 1001)]
     second = [repo(i, 500 - i) for i in range(1001, 2001)]
-    client = gc.GitHubClient(session=make_session([first, second]))
+    client = gc.GitHubClient(session=make_session([first, second]), search_max_retries=0)
     result = client.top_repos_by_stars(2000)
     assert len(result) == 2000
     assert len({r["id"] for r in result}) == 2000
@@ -44,7 +88,7 @@ def test_top_repos_collects_limit_and_dedupes():
 
 
 def test_top_repos_stops_when_empty():
-    client = gc.GitHubClient(session=make_session([[repo(1, 5)]]))
+    client = gc.GitHubClient(session=make_session([[repo(1, 5)]]), search_max_retries=0)
     result = client.top_repos_by_stars(100)
     assert len(result) == 1
 
