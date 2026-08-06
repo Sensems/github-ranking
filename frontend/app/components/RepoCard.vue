@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { Badge } from '~/components/ui/badge'
+import { Button } from '~/components/ui/button'
+import { Card, CardContent } from '~/components/ui/card'
 import type { BoardType, LeaderboardItem, Summary } from '~/types/leaderboard'
 
 const props = defineProps<{ item: LeaderboardItem; boardType: BoardType }>()
@@ -71,56 +74,68 @@ async function onSummaryClick() {
 </script>
 
 <template>
-  <article class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-    <div class="flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <span class="mr-2 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-xs font-semibold text-gray-500">#{{ item.rank }}</span>
-        <a :href="item.html_url" target="_blank" rel="noopener" class="font-semibold text-gray-900 hover:text-blue-600">
-          {{ item.repo_name }}
-        </a>
-        <span class="ml-2 inline-block rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
-          {{ display(item.language) }}
+  <Card class="transition hover:-translate-y-0.5 hover:shadow-md">
+    <CardContent class="space-y-3 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <Badge variant="secondary" class="mr-2">#{{ item.rank }}</Badge>
+          <a
+            :href="item.html_url"
+            target="_blank"
+            rel="noopener"
+            class="font-semibold text-foreground hover:text-primary"
+          >
+            {{ item.repo_name }}
+          </a>
+          <Badge variant="outline" class="ml-2">{{ display(item.language) }}</Badge>
+        </div>
+        <div class="shrink-0 text-lg font-bold">★ {{ fmt(item.stars) }}</div>
+      </div>
+
+      <div class="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <span>Forks {{ fmt(item.forks) }}</span>
+        <span>Open Issues {{ display(item.open_issues) }}</span>
+        <span>Last Commit {{ fmtDate(item.pushed_at) }}</span>
+      </div>
+
+      <div v-if="growthKey" class="text-sm text-muted-foreground">
+        {{ growthLabels[growthKey] }}：
+        <span
+          class="font-medium"
+          :class="(item.growth[growthKey] ?? 0) >= 0 ? 'text-growth-positive' : 'text-growth-negative'"
+        >
+          {{ fmtSigned(item.growth[growthKey]) }}
         </span>
       </div>
-      <div class="shrink-0 text-lg font-bold text-gray-900">★ {{ fmt(item.stars) }}</div>
-    </div>
 
-    <div class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600">
-      <span>Forks {{ fmt(item.forks) }}</span>
-      <span>Open Issues {{ display(item.open_issues) }}</span>
-      <span>Last Commit {{ fmtDate(item.pushed_at) }}</span>
-    </div>
+      <p class="text-sm text-muted-foreground">{{ display(item.description) }}</p>
 
-    <div v-if="growthKey" class="mt-2 text-sm text-gray-600">
-      {{ growthLabels[growthKey] }}：
-      <span class="font-medium" :class="(item.growth[growthKey] ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'">
-        {{ fmtSigned(item.growth[growthKey]) }}
-      </span>
-    </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="link"
+          class="h-auto px-0"
+          :disabled="loading"
+          @click="onSummaryClick"
+        >
+          {{ loading ? '加载中…' : hasSummaryLocal ? '查看概况' : '生成概况' }}
+        </Button>
+        <Button as-child variant="link" class="h-auto px-0">
+          <a :href="item.html_url" target="_blank" rel="noopener">查看仓库 →</a>
+        </Button>
+      </div>
 
-    <p class="mt-2 text-sm text-gray-500">{{ display(item.description) }}</p>
+      <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
 
-    <div class="mt-3 flex flex-wrap items-center gap-3">
-      <button
-        type="button"
-        class="text-sm font-medium text-blue-600 hover:underline disabled:opacity-50"
-        :disabled="loading"
-        @click="onSummaryClick"
+      <div
+        v-if="expanded && summary"
+        class="rounded-lg bg-muted p-3 text-sm leading-relaxed text-foreground"
       >
-        {{ loading ? '加载中…' : hasSummaryLocal ? '查看概况' : '生成概况' }}
-      </button>
-      <a :href="item.html_url" target="_blank" rel="noopener" class="text-sm font-medium text-blue-600 hover:underline">
-        查看仓库 →
-      </a>
-    </div>
-
-    <p v-if="error" class="mt-2 text-sm text-red-500">{{ error }}</p>
-
-    <div v-if="expanded && summary" class="mt-3 rounded-lg bg-gray-50 p-3 text-sm leading-relaxed text-gray-700">
-      <p class="font-medium text-gray-900">{{ summary.project_positioning }}</p>
-      <p v-if="summary.core_features.length" class="mt-1">功能：{{ summary.core_features.join('、') }}</p>
-      <p v-if="summary.use_cases.length" class="mt-1">场景：{{ summary.use_cases.join('、') }}</p>
-      <p v-if="summary.tech_stack.length" class="mt-1">技术栈：{{ summary.tech_stack.join('、') }}</p>
-    </div>
-  </article>
+        <p class="font-medium">{{ summary.project_positioning }}</p>
+        <p v-if="summary.core_features.length" class="mt-1">功能：{{ summary.core_features.join('、') }}</p>
+        <p v-if="summary.use_cases.length" class="mt-1">场景：{{ summary.use_cases.join('、') }}</p>
+        <p v-if="summary.tech_stack.length" class="mt-1">技术栈：{{ summary.tech_stack.join('、') }}</p>
+      </div>
+    </CardContent>
+  </Card>
 </template>
