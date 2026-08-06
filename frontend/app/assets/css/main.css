@@ -1,3 +1,67 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-destructive: hsl(var(--destructive));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+:root {
+  /* #F8FAFC */
+  --background: 210 40% 98%;
+  /* #0F172A */
+  --foreground: 222 47% 11%;
+  /* #FFFFFF */
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  /* #0F766E teal */
+  --primary: 175 77% 26%;
+  --primary-foreground: 0 0% 100%;
+  /* slate muted surface */
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  /* #64748B */
+  --muted-foreground: 215 16% 47%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 72% 51%;
+  /* #E2E8F0 */
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 175 77% 26%;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Semantic growth (not first-class shadcn tokens) */
+@utility text-growth-positive {
+  color: #15803d;
+}
+@utility text-growth-negative {
+  color: #b91c1c;
+}

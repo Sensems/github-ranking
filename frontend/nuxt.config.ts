@@ -1,7 +1,16 @@
+import tailwindcss from '@tailwindcss/vite'
+
 export default defineNuxtConfig({
   srcDir: 'app/',
-  modules: ['@nuxtjs/tailwindcss'],
+  modules: ['shadcn-nuxt'],
+  shadcn: {
+    prefix: '',
+    componentDir: '@/components/ui',
+  },
   css: ['~/assets/css/main.css'],
+  vite: {
+    plugins: [tailwindcss()],
+  },
   app: {
     baseURL: process.env.NUXT_APP_BASE_URL || '/',
     head: {
