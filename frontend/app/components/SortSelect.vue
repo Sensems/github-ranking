@@ -4,13 +4,17 @@ defineEmits<{ (e: 'update:modelValue', value: string): void }>()
 </script>
 
 <template>
-  <select
-    :value="modelValue"
-    class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-    @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
+  <Select
+    :model-value="modelValue"
+    @update:model-value="$emit('update:modelValue', String($event))"
   >
-    <option value="stars">按 Star 数</option>
-    <option value="growth">按增速</option>
-    <option value="forks">按 Fork 数</option>
-  </select>
+    <SelectTrigger class="w-40">
+      <SelectValue placeholder="排序" />
+    </SelectTrigger>
+    <SelectContent>
+      <SelectItem value="stars">按 Star 数</SelectItem>
+      <SelectItem value="growth">按增速</SelectItem>
+      <SelectItem value="forks">按 Fork 数</SelectItem>
+    </SelectContent>
+  </Select>
 </template>
