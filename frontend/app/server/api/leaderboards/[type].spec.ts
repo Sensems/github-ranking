@@ -30,19 +30,37 @@ describe('GET /api/leaderboards/:type', () => {
     })
   })
 
-  it('returns leaderboard payload when row exists', async () => {
-    const items = [{ rank: 1, repo_id: 42, repo_name: 'a/b' }]
-    mockedGetPool.mockReturnValue({
-      query: vi.fn().mockResolvedValue({
+  it('attaches summaries from summaries table onto items', async () => {
+    const items = [
+      { rank: 1, repo_id: 42, repo_name: 'a/b', has_summary: true },
+      { rank: 2, repo_id: 7, repo_name: 'c/d', has_summary: false },
+    ]
+    const summary = {
+      project_positioning: '工具库',
+      core_features: ['快'],
+      use_cases: ['CLI'],
+      tech_stack: ['Go'],
+    }
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
         rows: [{ generated_at: '2026-08-05T12:00:00.000Z', items }],
-      }),
-    } as never)
+      })
+      .mockResolvedValueOnce({
+        rows: [{ repo_id: 42, summary }],
+      })
+    mockedGetPool.mockReturnValue({ query } as never)
 
     await expect(getLeaderboardByType('total')).resolves.toEqual({
       type: 'total',
       generated_at: '2026-08-05T12:00:00.000Z',
-      items,
+      items: [
+        { ...items[0], summary, has_summary: true },
+        { ...items[1], has_summary: false },
+      ],
     })
+    expect(query).toHaveBeenCalledTimes(2)
+    expect(query.mock.calls[1][0]).toContain('FROM summaries')
   })
 
   it('returns 500 on database error', async () => {

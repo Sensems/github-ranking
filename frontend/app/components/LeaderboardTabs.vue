@@ -23,6 +23,7 @@ async function onTabChange(value: string | number) {
         v-for="tab in tabs"
         :key="tab.to"
         :value="tab.to"
+        class="transition-colors duration-150"
       >
         {{ tab.label }}
       </TabsTrigger>

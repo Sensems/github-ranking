@@ -14,11 +14,9 @@ const growthLabels: Record<Exclude<BoardType, 'total'>, string> = {
   yearly: '今年',
 }
 
-const summary = ref<Summary | null>(null)
-const expanded = ref(false)
+const summary = ref<Summary | null>(props.item.summary ?? null)
 const loading = ref(false)
 const error = ref('')
-const hasSummaryLocal = ref(props.item.has_summary ?? false)
 
 const growthKey = computed(() => (props.boardType === 'total' ? null : props.boardType))
 
@@ -46,25 +44,16 @@ function fmtDate(iso: string | null | undefined): string {
   return d.toISOString().slice(0, 10)
 }
 
-async function onSummaryClick() {
-  if (expanded.value && summary.value) {
-    expanded.value = false
-    return
-  }
-  if (summary.value) {
-    expanded.value = true
-    return
-  }
+async function onGenerateSummary() {
+  if (summary.value || loading.value) return
   loading.value = true
   error.value = ''
   try {
-    const path = `/api/repos/${props.item.repo_id}/summary`
-    const res = hasSummaryLocal.value
-      ? await $fetch<{ repo_id: number; summary: Summary }>(path)
-      : await $fetch<{ repo_id: number; summary: Summary }>(path, { method: 'POST' })
+    const res = await $fetch<{ repo_id: number; summary: Summary }>(
+      `/api/repos/${props.item.repo_id}/summary`,
+      { method: 'POST' },
+    )
     summary.value = res.summary
-    expanded.value = true
-    hasSummaryLocal.value = true
   } catch {
     error.value = '概况生成失败，请重试'
   } finally {
@@ -74,8 +63,10 @@ async function onSummaryClick() {
 </script>
 
 <template>
-  <Card class="transition hover:-translate-y-0.5 hover:shadow-md">
-    <CardContent class="space-y-3 p-4">
+  <Card
+    class="flex h-full flex-col transition-[translate,box-shadow] duration-200 ease-out hover:-translate-y-1 hover:shadow-md"
+  >
+    <CardContent class="flex h-full flex-col gap-3 space-y-0 p-4">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
           <Badge variant="secondary" class="mr-2">#{{ item.rank }}</Badge>
@@ -83,7 +74,7 @@ async function onSummaryClick() {
             :href="item.html_url"
             target="_blank"
             rel="noopener"
-            class="font-semibold text-foreground hover:text-primary"
+            class="font-semibold text-foreground transition-colors hover:text-primary"
           >
             {{ item.repo_name }}
           </a>
@@ -108,17 +99,36 @@ async function onSummaryClick() {
         </span>
       </div>
 
-      <p class="text-sm text-muted-foreground">{{ display(item.description) }}</p>
+      <p class="line-clamp-3 text-sm text-muted-foreground">{{ display(item.description) }}</p>
 
-      <div class="flex flex-wrap items-center gap-3">
+      <Transition name="summary">
+        <div
+          v-if="summary"
+          class="rounded-lg bg-muted p-3 text-sm leading-relaxed text-foreground"
+        >
+          <p class="font-medium">{{ summary.project_positioning }}</p>
+          <p v-if="summary.core_features.length" class="mt-1 line-clamp-2">
+            功能：{{ summary.core_features.join('、') }}
+          </p>
+          <p v-if="summary.use_cases.length" class="mt-1 line-clamp-2">
+            场景：{{ summary.use_cases.join('、') }}
+          </p>
+          <p v-if="summary.tech_stack.length" class="mt-1 line-clamp-1">
+            技术栈：{{ summary.tech_stack.join('、') }}
+          </p>
+        </div>
+      </Transition>
+
+      <div class="mt-auto flex flex-wrap items-center gap-3 pt-1">
         <Button
+          v-if="!summary"
           type="button"
           variant="link"
           class="h-auto px-0"
           :disabled="loading"
-          @click="onSummaryClick"
+          @click="onGenerateSummary"
         >
-          {{ loading ? '加载中…' : hasSummaryLocal ? '查看概况' : '生成概况' }}
+          {{ loading ? '加载中…' : '生成概况' }}
         </Button>
         <Button as-child variant="link" class="h-auto px-0">
           <a :href="item.html_url" target="_blank" rel="noopener">查看仓库 →</a>
@@ -126,16 +136,6 @@ async function onSummaryClick() {
       </div>
 
       <p v-if="error" class="text-sm text-destructive">{{ error }}</p>
-
-      <div
-        v-if="expanded && summary"
-        class="rounded-lg bg-muted p-3 text-sm leading-relaxed text-foreground"
-      >
-        <p class="font-medium">{{ summary.project_positioning }}</p>
-        <p v-if="summary.core_features.length" class="mt-1">功能：{{ summary.core_features.join('、') }}</p>
-        <p v-if="summary.use_cases.length" class="mt-1">场景：{{ summary.use_cases.join('、') }}</p>
-        <p v-if="summary.tech_stack.length" class="mt-1">技术栈：{{ summary.tech_stack.join('、') }}</p>
-      </div>
     </CardContent>
   </Card>
 </template>

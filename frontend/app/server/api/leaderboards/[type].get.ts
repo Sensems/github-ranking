@@ -1,7 +1,29 @@
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { getPool } from '../../utils/db'
+import type { LeaderboardItem, Summary } from '~/types/leaderboard'
 
 const BOARD_TYPES = new Set(['total', 'daily', 'weekly', 'monthly', 'yearly'])
+
+async function attachSummaries(items: LeaderboardItem[]): Promise<LeaderboardItem[]> {
+  if (!items.length) return items
+
+  const ids = [...new Set(items.map((i) => i.repo_id).filter((id) => Number.isFinite(id)))]
+  if (!ids.length) return items
+
+  const { rows } = await getPool().query<{ repo_id: number; summary: Summary }>(
+    'SELECT repo_id, summary FROM summaries WHERE repo_id = ANY($1::bigint[])',
+    [ids],
+  )
+  const byId = new Map(rows.map((r) => [Number(r.repo_id), r.summary]))
+
+  return items.map((item) => {
+    const summary = byId.get(item.repo_id)
+    if (!summary) {
+      return { ...item, has_summary: item.has_summary ?? false }
+    }
+    return { ...item, summary, has_summary: true }
+  })
+}
 
 export async function getLeaderboardByType(type: string) {
   if (!BOARD_TYPES.has(type)) {
@@ -19,10 +41,12 @@ export async function getLeaderboardByType(type: string) {
     }
     const generatedAt =
       row.generated_at instanceof Date ? row.generated_at.toISOString() : row.generated_at
+    const rawItems = (row.items ?? []) as LeaderboardItem[]
+    const items = await attachSummaries(rawItems)
     return {
       type,
       generated_at: generatedAt,
-      items: row.items ?? [],
+      items,
     }
   } catch (err: unknown) {
     if (err && typeof err === 'object' && 'statusCode' in err) {

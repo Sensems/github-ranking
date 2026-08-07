@@ -23,12 +23,13 @@ describe.each(boards)('$file', ({ file, type, title }) => {
     expect(page).toContain('class="text-xs text-muted-foreground"')
     expect(page).toContain('<Alert v-if="error" variant="destructive">')
     expect(page).toContain('<AlertDescription>加载失败，请稍后重试。</AlertDescription>')
-    expect(page).toContain('<div class="mb-4 flex flex-wrap items-center gap-2">')
-    expect(page).toContain('<div v-if="sorted.length" class="grid gap-4 md:grid-cols-2">')
+    expect(page).toContain('class="board-toolbar mb-4 flex flex-wrap items-center gap-2"')
+    expect(page).toContain('class="board-grid grid gap-4 md:grid-cols-2"')
     expect(page).toContain('<Alert v-else>')
     expect(page).toContain(
       '<AlertDescription>该榜单暂无数据（历史数据积累中），请明天再来看看。</AlertDescription>',
     )
     expect(page).toContain(`board-type="${type}"`)
+    expect(page).toContain('class="board-page"')
   })
 })

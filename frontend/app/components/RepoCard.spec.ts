@@ -79,20 +79,26 @@ describe('RepoCard', () => {
     expect(wrapper.text()).not.toContain('今年')
   })
 
-  it('does not show AI summary text until button click', () => {
+  it('shows summary inline when item.summary is present and hides generate button', () => {
     const wrapper = mount(RepoCard, {
-      props: { item: { ...item, has_summary: true }, boardType: 'daily' },
+      props: {
+        item: { ...item, has_summary: true, summary: sampleSummary },
+        boardType: 'daily',
+      },
     })
-    expect(wrapper.text()).not.toContain('渐进式前端框架')
-    expect(wrapper.text()).toContain('查看概况')
+    expect(wrapper.text()).toContain('渐进式前端框架')
+    expect(wrapper.text()).toContain('响应式')
+    expect(wrapper.text()).not.toContain('生成概况')
+    expect(wrapper.text()).not.toContain('查看概况')
   })
 
-  it('shows 生成概况 when has_summary is false', () => {
+  it('shows 生成概况 when summary is missing', () => {
     const wrapper = mount(RepoCard, { props: { item, boardType: 'daily' } })
     expect(wrapper.text()).toContain('生成概况')
+    expect(wrapper.text()).not.toContain('渐进式前端框架')
   })
 
-  it('fetches summary on generate and reveals positioning', async () => {
+  it('POSTs summary on generate and reveals positioning', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       repo_id: 1,
       summary: sampleSummary,
@@ -108,24 +114,7 @@ describe('RepoCard', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/repos/1/summary', { method: 'POST' })
     expect(wrapper.text()).toContain('渐进式前端框架')
     expect(wrapper.text()).toContain('响应式')
-    expect(wrapper.text()).toContain('查看概况')
-  })
-
-  it('GETs summary when has_summary is true', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      repo_id: 1,
-      summary: sampleSummary,
-    })
-    vi.stubGlobal('$fetch', fetchMock)
-
-    const wrapper = mount(RepoCard, {
-      props: { item: { ...item, has_summary: true }, boardType: 'daily' },
-    })
-    await wrapper.get('button').trigger('click')
-    await flushPromises()
-
-    expect(fetchMock).toHaveBeenCalledWith('/api/repos/1/summary')
-    expect(wrapper.text()).toContain('渐进式前端框架')
+    expect(wrapper.text()).not.toContain('生成概况')
   })
 
   it('links to the repository', () => {

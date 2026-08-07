@@ -8,6 +8,7 @@
 - Keep the RepoCard grid (not a table-first layout); total board shows screenshot-style fields, while growth boards additionally show the matching window’s star growth.
 - Repo AI summaries are on-demand only: no default/batch summary in daily sync; each card has a generate button that calls the API and persists to the database.
 - Frontend redesign direction: dense “数据台” console with shadcn-vue—light theme only, graphite neutrals + teal primary `#0F766E`, high information density—not a marketing/landing hero layout and not dark mode.
+- Frontend interactions should stay restrained and utilitarian: subtle stagger/fade motion, smooth card hover transitions, equal-height RepoCards, and `prefers-reduced-motion` support.
 - Prefer design-system-first UI rollout: land shadcn-vue `ui/*` primitives before restyling business components; phase-1 set is button, input, select, badge, card, tabs, separator, skeleton, alert (no dialog/dropdown/sheet yet).
 
 ## Learned Workspace Facts

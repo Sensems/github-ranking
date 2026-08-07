@@ -25,6 +25,8 @@ export interface LeaderboardItem {
   pushed_at?: string | null
   growth: Growth
   has_summary?: boolean
+  /** Present when Nitro joined a cached row from `summaries`. */
+  summary?: Summary
 }
 
 export interface LeaderboardPayload {
