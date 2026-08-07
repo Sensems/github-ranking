@@ -64,14 +64,12 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/var/www/github-ranking
-Environment=NUXT_DATABASE_URL=postgresql://nuxt_app:YOUR_PASSWORD@127.0.0.1:5432/github-ranking
-# 也可用 Environment=DATABASE_URL=...（getPool 回退）
-# 按需 AI 摘要按钮（Nitro）：
+# 推荐：把 NUXT_DATABASE_URL、PORT、NUXT_XFYUN_* 写在部署目录 .env
+EnvironmentFile=-/var/www/github-ranking/.env
+# 也可直接写在 unit 里：
+# Environment=NUXT_DATABASE_URL=postgresql://nuxt_app:YOUR_PASSWORD@127.0.0.1:5432/github-ranking
+# Environment=PORT=3000
 # Environment=NUXT_XFYUN_API_KEY=...
-# Environment=NUXT_XFYUN_BASE_URL=https://spark-api-open.xf-yun.com/agent/v1/
-# Environment=NUXT_XFYUN_MODEL=spark-x
-# 也兼容运行时 XFYUN_API_KEY / XFYUN_BASE_URL / XFYUN_MODEL
-Environment=PORT=3000
 ExecStart=/usr/bin/node server/index.mjs
 Restart=on-failure
 RestartSec=5
@@ -89,9 +87,8 @@ sudo systemctl enable --now github-ranking
 
 ```bash
 cd /var/www/github-ranking
-export NUXT_DATABASE_URL='postgresql://nuxt_readonly:YOUR_PASSWORD@127.0.0.1:5432/github-ranking'
-# 或: export DATABASE_URL='...'
-export PORT=3000
+# 推荐在目录放置 .env（含 NUXT_DATABASE_URL、PORT=3000 等），启动前注入：
+set -a && source .env && set +a
 pm2 start server/index.mjs --name github-ranking
 pm2 save
 ```

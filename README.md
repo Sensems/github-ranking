@@ -185,6 +185,7 @@ Actions 中不需要配置讯飞变量；sync / backfill 不生成概况。
 | 变量 | 必需 | 用途 |
 |---|---:|---|
 | `NUXT_DATABASE_URL` | 是 | Nitro 连接 PostgreSQL；也兼容 `DATABASE_URL` |
+| `PORT` | 否 | 监听端口，默认 `3000`（dev 也可用 `NUXT_PORT`；生产也可用 `NITRO_PORT`） |
 | `NUXT_XFYUN_API_KEY` | 生成概况时 | 讯飞 API Key |
 | `NUXT_XFYUN_BASE_URL` | 否 | 讯飞 API 地址 |
 | `NUXT_XFYUN_MODEL` | 否 | 模型 ID |
