@@ -51,9 +51,25 @@ GitHub-hosted Actions runner 必须能 **TCP 连接** 到 Postgres 主机与端�
 4. 参考 `deploy/nginx.conf.example` 配置反代到 `127.0.0.1:3000`（或 `.env` 里的 `PORT`）
 5. 用 **PM2** 跑 Nitro，进程名约定为 **`github-ranking`**
 
-> **入口路径**：将 `frontend/.output/` **内容**放到部署目录后，工作目录入口是 `server/index.mjs`（不是 `.output/server/index.mjs`）。同时拷贝 `deploy/ecosystem.config.cjs`。可选使用 `deploy/deploy.sh` 做本机 rsync（需自备环境变量，Actions 不会调用）。
+> **入口路径**：将 `frontend/.output/` **内容**放到部署目录后，工作目录入口是 `server/index.mjs`（不是 `.output/server/index.mjs`）。`npm run build` 会把 `ecosystem.config.cjs` 一并打进 `.output/`；若目录里没有该文件，从仓库 `deploy/ecosystem.config.cjs` 再拷一份到部署根目录。
 
-**PM2（推荐）**：
+**PM2（推荐）一键脚本**：
+
+在仓库根目录（已放好 `frontend/.env`）执行：
+
+```bash
+bash deploy/one-click.sh
+```
+
+默认在 `frontend/.output` 构建并用 PM2 启动。若要部署到其它目录：
+
+```bash
+DEPLOY_PATH=/var/www/github-ranking bash deploy/one-click.sh
+```
+
+首次开机自启再执行一次：`pm2 startup`（按提示执行生成的命令）。
+
+**PM2 手动步骤**（不用一键脚本时）：
 
 ```bash
 # 部署目录结构示例
@@ -64,10 +80,9 @@ GitHub-hosted Actions runner 必须能 **TCP 连接** 到 Postgres 主机与端�
 #   ecosystem.config.cjs # 来自仓库 deploy/ecosystem.config.cjs
 
 cd /var/www/github-ranking
-# 首次或更新后：
 pm2 startOrReload ecosystem.config.cjs --update-env
 pm2 save
-pm2 startup   # 按提示执行生成的 systemd 命令，实现开机自启
+pm2 startup
 ```
 
 常用命令：

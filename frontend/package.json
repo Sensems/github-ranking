@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "nuxt dev",
-    "build": "nuxt build",
+    "build": "nuxt build && node ../deploy/copy-ecosystem.mjs",
     "preview": "nuxt preview",
     "generate": "nuxt generate",
     "test": "vitest run"
