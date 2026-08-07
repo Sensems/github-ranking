@@ -4,12 +4,13 @@
 - For the database migration: keep daily sync on GitHub Actions, run the read API on the existing server with Postgres, and implement the API as Nuxt Nitro server routes (not a separate Python API).
 - Do not migrate existing `data/` JSON/CSV history into Postgres; start from an empty database and re-accumulate via sync.
 - Growth ranking uses local daily snapshots (Approach A) on a reduced watch set—not a ~10k full pool and not GH Archive/BigQuery as the primary source.
-- Total board tracks Top 100 by stars; daily/weekly/monthly/yearly growth boards use the G2 watch set (Top 500 ∪ newcomers ∪ previous growth-board members).
-- Keep the RepoCard grid (not a table-first layout); total board shows screenshot-style fields, while growth boards additionally show the matching window’s star growth.
-- Repo AI summaries are on-demand only: no default/batch summary in daily sync; each card has a generate button that calls the API and persists to the database.
-- Frontend redesign direction: dense “数据台” console with shadcn-vue—light theme only, graphite neutrals + teal primary `#0F766E`, high information density—not a marketing/landing hero layout and not dark mode.
-- Frontend interactions should stay restrained and utilitarian: subtle stagger/fade motion, smooth card hover transitions, equal-height RepoCards, and `prefers-reduced-motion` support.
-- Prefer design-system-first UI rollout: land shadcn-vue `ui/*` primitives before restyling business components; phase-1 set is button, input, select, badge, card, tabs, separator, skeleton, alert (no dialog/dropdown/sheet yet).
+- Total board tracks Top 100 by stars; daily/weekly/monthly/yearly growth boards use the G2 watch set (Top 500 ∪ newcomers ∪ previous growth-board members); growth boards should default-sort by that window’s star growth.
+- Leaderboard UI is a horizontal row/table list (not a RepoCard grid): sticky toolbar with search + language + sort, and sticky column headers below it.
+- Keep the product name「GitHub Star 趋势榜」(not RepoRank); total board shows screenshot-style fields, while growth boards additionally show the matching window’s star growth.
+- Repo AI summaries are on-demand only: no default/batch summary in daily sync; when a summary exists show it inline on the board, otherwise show a generate button that calls the API and persists to the database.
+- Frontend redesign direction: dense data-console row layout—dual theme with dark + neon-green primary and a light companion mode (not light-only); high information density, not a marketing/landing hero layout.
+- Frontend interactions should stay restrained and utilitarian: subtle stagger/fade motion, sticky filter/column chrome for scan efficiency, and `prefers-reduced-motion` support.
+- Prefer design-system-first UI rollout: land shadcn-vue `ui/*` primitives before restyling business components; phase-1 set is button, input, select, badge, card, tabs, separator, skeleton, alert (no dialog/dropdown/sheet yet); board rows use a dedicated row/table component rather than card-grid shells.
 
 ## Learned Workspace Facts
 
@@ -20,5 +21,5 @@
 - Nuxt reads Postgres via `pg` with runtime config (`NUXT_DATABASE_URL` / `DATABASE_URL`); deploy rsyncs `.output/` contents so the process entry is `server/index.mjs`.
 - Only the G2 watch set receives daily snapshots; five precomputed `leaderboards` rows are served by Nitro without recomputing growth on request.
 - Sync persists `open_issues` / `pushed_at` from GitHub and no longer batch-refreshes README or AI summaries; missing card fields may show as "—" until Actions fills them.
-- Board items expose `has_summary` (and related card fields) without embedding summary text by default; on-demand Chinese summaries are served through Nitro GET/POST routes and written to the database.
-- Frontend UI stack is Nuxt 3 + Tailwind v4 + shadcn-vue; primitives live under `frontend/app/components/ui/`, and light graphite/teal theme tokens live in `frontend/app/assets/css/main.css`.
+- Board reads may join existing Chinese summaries for inline display; missing summaries still use on-demand Nitro GET/POST routes and are written to the database.
+- Frontend UI stack is Nuxt 3 + Tailwind v4 + shadcn-vue; primitives live under `frontend/app/components/ui/`, board presentation is moving to row/table components with sticky toolbar/headers, and dual-theme tokens live in `frontend/app/assets/css/main.css`.

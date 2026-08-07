@@ -25,7 +25,7 @@ export interface LeaderboardItem {
   pushed_at?: string | null
   growth: Growth
   has_summary?: boolean
-  /** Present when Nitro joined a cached row from `summaries`. */
+  /** Present only after on-demand GET/POST; leaderboard payloads expose has_summary. */
   summary?: Summary
 }
 

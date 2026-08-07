@@ -1,27 +1,27 @@
 import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { getPool } from '../../utils/db'
-import type { LeaderboardItem, Summary } from '~/types/leaderboard'
+import type { LeaderboardItem } from '~/types/leaderboard'
 
 const BOARD_TYPES = new Set(['total', 'daily', 'weekly', 'monthly', 'yearly'])
 
-async function attachSummaries(items: LeaderboardItem[]): Promise<LeaderboardItem[]> {
+async function attachSummaryFlags(items: LeaderboardItem[]): Promise<LeaderboardItem[]> {
   if (!items.length) return items
 
   const ids = [...new Set(items.map((i) => i.repo_id).filter((id) => Number.isFinite(id)))]
   if (!ids.length) return items
 
-  const { rows } = await getPool().query<{ repo_id: number; summary: Summary }>(
-    'SELECT repo_id, summary FROM summaries WHERE repo_id = ANY($1::bigint[])',
+  const { rows } = await getPool().query<{ repo_id: number }>(
+    'SELECT repo_id FROM summaries WHERE repo_id = ANY($1::bigint[])',
     [ids],
   )
-  const byId = new Map(rows.map((r) => [Number(r.repo_id), r.summary]))
+  const hasSummary = new Set(rows.map((r) => Number(r.repo_id)))
 
   return items.map((item) => {
-    const summary = byId.get(item.repo_id)
-    if (!summary) {
-      return { ...item, has_summary: item.has_summary ?? false }
+    const { summary: _omit, ...rest } = item
+    return {
+      ...rest,
+      has_summary: hasSummary.has(item.repo_id),
     }
-    return { ...item, summary, has_summary: true }
   })
 }
 
@@ -42,7 +42,7 @@ export async function getLeaderboardByType(type: string) {
     const generatedAt =
       row.generated_at instanceof Date ? row.generated_at.toISOString() : row.generated_at
     const rawItems = (row.items ?? []) as LeaderboardItem[]
-    const items = await attachSummaries(rawItems)
+    const items = await attachSummaryFlags(rawItems)
     return {
       type,
       generated_at: generatedAt,

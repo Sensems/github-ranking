@@ -1,10 +1,12 @@
 import { computed, ref } from 'vue'
 import type { BoardType, LeaderboardItem } from '~/types/leaderboard'
 
+export type SortBy = 'stars' | 'growth' | 'forks'
+
 export function useLeaderboard(items: LeaderboardItem[], boardType: BoardType) {
   const query = ref('')
   const language = ref('')
-  const sortBy = ref<'stars' | 'growth' | 'forks'>('stars')
+  const sortBy = ref<SortBy>(boardType === 'total' ? 'stars' : 'growth')
 
   const languages = computed(() =>
     [...new Set(items.map((i) => i.language).filter((l): l is string => Boolean(l)))].sort(),
@@ -36,5 +38,27 @@ export function useLeaderboard(items: LeaderboardItem[], boardType: BoardType) {
     return list
   })
 
-  return { query, language, sortBy, languages, filtered, sorted }
+  const totalCount = computed(() => items.length)
+  const resultCount = computed(() => filtered.value.length)
+  const hasActiveFilters = computed(
+    () => Boolean(query.value.trim()) || Boolean(language.value),
+  )
+
+  function clearFilters() {
+    query.value = ''
+    language.value = ''
+  }
+
+  return {
+    query,
+    language,
+    sortBy,
+    languages,
+    filtered,
+    sorted,
+    totalCount,
+    resultCount,
+    hasActiveFilters,
+    clearFilters,
+  }
 }

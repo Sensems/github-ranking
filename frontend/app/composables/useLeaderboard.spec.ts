@@ -61,13 +61,36 @@ describe('useLeaderboard', () => {
     expect(lb.sorted.value[0].repo_id).toBe(1)
   })
 
-  it('sorts by stars by default', () => {
+  it('defaults growth boards to growth sort', () => {
     const lb = useLeaderboard(items, 'daily')
+    expect(lb.sortBy.value).toBe('growth')
+    expect(lb.sorted.value[0].repo_id).toBe(1)
+  })
+
+  it('defaults total board to stars sort', () => {
+    const lb = useLeaderboard(items, 'total')
+    expect(lb.sortBy.value).toBe('stars')
     expect(lb.sorted.value[0].repo_id).toBe(2)
   })
 
   it('exposes unique languages', () => {
     const lb = useLeaderboard(items, 'daily')
     expect(lb.languages.value).toEqual(['Go', 'TypeScript'])
+  })
+
+  it('reports whether filters are active and total vs filtered counts', () => {
+    const lb = useLeaderboard(items, 'daily')
+    expect(lb.totalCount.value).toBe(2)
+    expect(lb.resultCount.value).toBe(2)
+    expect(lb.hasActiveFilters.value).toBe(false)
+
+    lb.query.value = 'vue'
+    expect(lb.resultCount.value).toBe(1)
+    expect(lb.hasActiveFilters.value).toBe(true)
+
+    lb.clearFilters()
+    expect(lb.query.value).toBe('')
+    expect(lb.language.value).toBe('')
+    expect(lb.resultCount.value).toBe(2)
   })
 })
