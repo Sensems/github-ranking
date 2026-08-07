@@ -8,7 +8,7 @@ GitHub Actions（每日 08:00 北京时间）
   → backfill：migrate → 小批量回溯 365 天锚点（写 Postgres）
 
 前端部署：人工 / 自有脚本（本仓库不通过 Actions SSH 部署）
-  → 本机或服务器：npm ci && npm run build → 拷贝 frontend/.output/ → 重启 Node
+  → npm ci && npm run build → 拷贝 frontend/.output/ + ecosystem.config.cjs → PM2 startOrReload
 
 PostgreSQL（系统唯一数据源）
   ↑ 读写（Actions pipeline）  ↑ 榜单读取 + 按需摘要写入（Nuxt Nitro）
@@ -45,15 +45,43 @@ GitHub-hosted Actions runner 必须能 **TCP 连接** 到 Postgres 主机与端�
 
 ### 1.2 服务器
 
-1. 安装 Node 20+、nginx
+1. 安装 Node 20+、nginx、PM2（`npm i -g pm2`）
 2. 创建部署目录，例如 `/var/www/github-ranking`
-3. 在部署目录或 systemd/pm2 环境中配置 **运行时** DB URL（Nuxt 最小权限角色），**不要**在 `npm run build` 时依赖真实连接串。推荐设置 `NUXT_DATABASE_URL`；也可设置 `DATABASE_URL`（`getPool()` 会回退读取）
-4. 参考 `deploy/nginx.conf.example` 配置反代到 `127.0.0.1:3000`
-5. 用 systemd 或 pm2 跑 Nitro，进程/单元名约定为 **`github-ranking`**
+3. 在部署目录放置运行时 `.env`（含 `NUXT_DATABASE_URL`、`PORT=3000` 等；需要概况时再加 `NUXT_XFYUN_*`）。**不要**在 `npm run build` 时依赖真实连接串
+4. 参考 `deploy/nginx.conf.example` 配置反代到 `127.0.0.1:3000`（或 `.env` 里的 `PORT`）
+5. 用 **PM2** 跑 Nitro，进程名约定为 **`github-ranking`**
 
-> **入口路径**：将 `frontend/.output/` **内容**放到部署目录后，工作目录入口是 `server/index.mjs`（不是 `.output/server/index.mjs`）。可选使用 `deploy/deploy.sh` 做本机 rsync（需自备环境变量，Actions 不会调用）。
+> **入口路径**：将 `frontend/.output/` **内容**放到部署目录后，工作目录入口是 `server/index.mjs`（不是 `.output/server/index.mjs`）。同时拷贝 `deploy/ecosystem.config.cjs`。可选使用 `deploy/deploy.sh` 做本机 rsync（需自备环境变量，Actions 不会调用）。
 
-**systemd 示例**（`/etc/systemd/system/github-ranking.service`）：
+**PM2（推荐）**：
+
+```bash
+# 部署目录结构示例
+# /var/www/github-ranking/
+#   server/index.mjs
+#   public/
+#   .env                 # NUXT_DATABASE_URL / PORT / NUXT_XFYUN_*
+#   ecosystem.config.cjs # 来自仓库 deploy/ecosystem.config.cjs
+
+cd /var/www/github-ranking
+# 首次或更新后：
+pm2 startOrReload ecosystem.config.cjs --update-env
+pm2 save
+pm2 startup   # 按提示执行生成的 systemd 命令，实现开机自启
+```
+
+常用命令：
+
+```bash
+pm2 status
+pm2 logs github-ranking
+pm2 restart github-ranking --update-env
+pm2 stop github-ranking
+```
+
+`ecosystem.config.cjs` 会读取同目录 `.env`（含 `PORT`），并启动 `server/index.mjs`。
+
+**systemd 备选**（不用 PM2 时）：
 
 ```ini
 [Unit]
@@ -64,33 +92,13 @@ After=network.target
 Type=simple
 User=www-data
 WorkingDirectory=/var/www/github-ranking
-# 推荐：把 NUXT_DATABASE_URL、PORT、NUXT_XFYUN_* 写在部署目录 .env
 EnvironmentFile=-/var/www/github-ranking/.env
-# 也可直接写在 unit 里：
-# Environment=NUXT_DATABASE_URL=postgresql://nuxt_app:YOUR_PASSWORD@127.0.0.1:5432/github-ranking
-# Environment=PORT=3000
-# Environment=NUXT_XFYUN_API_KEY=...
 ExecStart=/usr/bin/node server/index.mjs
 Restart=on-failure
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-```
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now github-ranking
-```
-
-**pm2 示例**：
-
-```bash
-cd /var/www/github-ranking
-# 推荐在目录放置 .env（含 NUXT_DATABASE_URL、PORT=3000 等），启动前注入：
-set -a && source .env && set +a
-pm2 start server/index.mjs --name github-ranking
-pm2 save
 ```
 
 ### 1.3 GitHub Actions Secrets（仅管道写库）
@@ -145,11 +153,14 @@ python scripts/main.py sync
 cd frontend
 npm ci
 npm run build
-# 将 .output/ 内容同步到服务器部署目录，例如：
-# rsync -az --delete .output/ user@host:/var/www/github-ranking/
+
+# 同步产物 + PM2 配置到服务器，例如：
+rsync -az --delete .output/ user@host:/var/www/github-ranking/
+rsync -az ../deploy/ecosystem.config.cjs user@host:/var/www/github-ranking/ecosystem.config.cjs
 # 或本机：bash ../deploy/deploy.sh（需自行 export DEPLOY_* / SSH_PRIVATE_KEY）
 
-sudo systemctl restart github-ranking   # 或 pm2 restart github-ranking
+# 服务器上（.env 已就位）：
+ssh user@host 'cd /var/www/github-ranking && pm2 startOrReload ecosystem.config.cjs --update-env && pm2 save'
 ```
 
 ### 1.6 验收访问
@@ -161,8 +172,8 @@ sudo systemctl restart github-ranking   # 或 pm2 restart github-ranking
 ## 2. 构建与部署路径
 
 - **Actions**：只做 migrate + sync（写库）
-- **前端**：人工 `npm run build`，把 `frontend/.output/` 内容放到部署目录后重启 Node
-- DB URL 仅 **Nitro 进程运行时** 需要（推荐 `NUXT_DATABASE_URL`，或 `DATABASE_URL`）
+- **前端**：人工 `npm run build`，把 `frontend/.output/` 内容与 `deploy/ecosystem.config.cjs` 放到部署目录，用 **PM2** `startOrReload` 重启
+- DB URL / `PORT` 写在部署目录 `.env`（由 ecosystem 注入进程）
 
 ## 3. 告警验证
 
@@ -176,7 +187,7 @@ sudo systemctl restart github-ranking   # 或 pm2 restart github-ranking
 | 现象 | 排查 |
 |------|------|
 | Sync 连不上库 | runner → Postgres 网络、`DATABASE_URL`、防火墙、TLS |
-| 部署后 502 | Node 是否监听 3000；`systemctl status github-ranking` 或 `pm2 status` |
+| 部署后 502 | Node 是否监听 `PORT`（默认 3000）；`pm2 status` / `pm2 logs github-ranking` |
 | API 5xx | 服务器进程是否配置了 `NUXT_DATABASE_URL` / `DATABASE_URL`；Nuxt 角色是否有榜单读取及 `readmes` / `summaries` 所需权限；入口是否为 `node server/index.mjs`；Postgres 是否可达 |
 | 年榜长期为空 | 正常冷启动；确认 backfill workflow 在跑且 `repos.backfilled_365` 在增长 |
 | 仍看到 GitHub Pages | 产品路径已切换 SSR；Pages 可关闭或仅作镜像，非主路径 |

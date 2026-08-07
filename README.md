@@ -230,7 +230,7 @@ npm run preview
 - 两个 workflow 使用不同 concurrency group，可能重叠；快照写入和榜单替换均设计为幂等
 - GitHub-hosted runner 必须能访问 PostgreSQL；可选公网防火墙、self-hosted runner 或隧道 / VPN
 - 生产前端由运维手动执行 `npm ci && npm run build`，同步 `frontend/.output/` 内容并重启 Nitro
-- nginx 负责 TLS 与反向代理；systemd / pm2 运行 `server/index.mjs`
+- nginx 负责 TLS 与反向代理；**PM2** 运行 `server/index.mjs`（见 `deploy/ecosystem.config.cjs`）
 
 详细步骤见 [部署文档](docs/DEPLOY.md)。
 
@@ -248,7 +248,7 @@ Python 测试覆盖观察集、增长计算、迁移和管道流程；Vitest 覆
 
 ## 文档
 
-- [部署文档](docs/DEPLOY.md) — 网络前置、数据库权限、systemd / pm2 与手动部署
+- [部署文档](docs/DEPLOY.md) — 网络前置、数据库权限、PM2 与手动部署
 - [日常运维](docs/OPERATIONS.md) — sync、backfill、故障恢复与数据检查
 - [验收记录](docs/ACCEPTANCE.md) — 当前验收项和上线检查
 - [PostgreSQL + Nitro 架构设计](docs/superpowers/specs/2026-08-05-postgres-nitro-architecture-design.md) — 初始设计记录；当前运行方式以本 README 和部署文档为准
