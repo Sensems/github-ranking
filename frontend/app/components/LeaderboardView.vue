@@ -112,7 +112,7 @@ watch(
 )
 
 function onScroll() {
-  showBackTop.value = window.scrollY > 480
+  showBackTop.value = window.scrollY > window.innerHeight
 }
 
 function loadMore() {
@@ -242,14 +242,18 @@ onUnmounted(() => {
       </div>
     </template>
 
-    <Button
-      v-if="showBackTop"
-      type="button"
-      variant="secondary"
-      class="fixed bottom-6 right-6 z-30 h-11 shadow-sm"
-      @click="backToTop"
-    >
-      回到顶部
-    </Button>
+    <ClientOnly>
+      <Teleport to="body">
+        <Button
+          v-if="showBackTop"
+          type="button"
+          variant="secondary"
+          class="fixed bottom-20 right-6 z-50 h-11 shadow-sm"
+          @click="backToTop"
+        >
+          回到顶部
+        </Button>
+      </Teleport>
+    </ClientOnly>
   </div>
 </template>
