@@ -1,6 +1,7 @@
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineNuxtConfig({
+  // With srcDir=app, static files must live in app/public (not ./public).
   srcDir: 'app/',
   modules: ['shadcn-nuxt'],
   shadcn: {
@@ -22,7 +23,7 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/png', href: '/logo.png' },
-        { rel: 'apple-touch-icon', href: '/logo.png' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/logo.png' },
       ],
     },
   },

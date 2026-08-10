@@ -40,7 +40,7 @@ export function useBoardSeo(boardType: BoardType, items: LeaderboardItem[] = [])
     link: [
       { rel: 'canonical', href: canonical },
       { rel: 'icon', type: 'image/png', href: '/logo.png' },
-      { rel: 'apple-touch-icon', href: '/logo.png' },
+      { rel: 'apple-touch-icon', sizes: '180x180', href: '/logo.png' },
     ],
     script: [
       {

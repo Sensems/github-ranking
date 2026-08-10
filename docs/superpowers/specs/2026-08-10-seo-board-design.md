@@ -19,7 +19,7 @@ Improve crawlability and share previews for「GitHub Star 趋势榜」without ad
 
 ## Assets
 
-- Source logo → `frontend/public/logo.png`
+- Source logo → `frontend/app/public/logo.png` (required with `srcDir: 'app/'`; root `frontend/public` is not copied)
 - Absolute OG URL: `{siteUrl}/logo.png` (from `runtimeConfig.public.siteUrl`)
 - Header replaces the current SVG trend icon with `<img src="/logo.png" …>`
 - `link rel="icon"` → `/logo.png`
