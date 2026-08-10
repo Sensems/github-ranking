@@ -213,15 +213,17 @@ onUnmounted(() => {
             class="board-cols board-colhead sticky z-20 rounded-md bg-muted/80 py-3.5 text-sm font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur"
             style="top: calc(var(--site-header-h) + var(--toolbar-h))"
           >
-            <div>排名</div>
-            <div>仓库</div>
-            <div>主语言</div>
-            <div>Star 总数</div>
-            <div>Fork</div>
-            <div>未关闭 Issue</div>
-            <div>最近提交</div>
-            <div v-if="isGrowthBoard">{{ meta.growthCol }}</div>
-            <div class="text-right">操作</div>
+            <div class="board-cell-rank">排名</div>
+            <div class="board-cell-repo">仓库</div>
+            <div class="board-row-meta">
+              <div class="board-cell-lang">主语言</div>
+              <div class="board-cell-stars">Star 总数</div>
+              <div class="board-cell-forks">Fork</div>
+              <div class="board-cell-issues">未关闭 Issue</div>
+              <div class="board-cell-pushed">最近提交</div>
+              <div v-if="isGrowthBoard" class="board-cell-growth">{{ meta.growthCol }}</div>
+            </div>
+            <div class="board-cell-actions text-right">操作</div>
           </div>
 
           <RepoRow
@@ -248,7 +250,7 @@ onUnmounted(() => {
           v-if="showBackTop"
           type="button"
           variant="secondary"
-          class="fixed bottom-20 right-6 z-50 h-11 shadow-sm"
+          class="fixed bottom-20 right-6 z-50 h-11 shadow-sm max-md:bottom-[max(5rem,env(safe-area-inset-bottom,0px)+4rem)] max-md:right-[max(1.5rem,env(safe-area-inset-right,0px)+0.75rem)]"
           @click="backToTop"
         >
           回到顶部

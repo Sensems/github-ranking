@@ -129,6 +129,11 @@
   padding-inline: 0.75rem;
 }
 
+/* Lets meta cells participate in desktop subgrid columns */
+.board-row-meta {
+  display: contents;
+}
+
 .board-row-card {
   align-items: center;
   border: 1px solid hsl(var(--border));
@@ -159,6 +164,80 @@
 
 .board-row-card > [data-summary] {
   grid-column: 1 / -1;
+}
+
+/* —— Mobile: stacked board rows (same component, not a card grid) —— */
+@media (max-width: 767px) {
+  :root {
+    --toolbar-h: auto;
+  }
+
+  .board-table--total,
+  .board-table--growth {
+    display: flex;
+    flex-direction: column;
+    row-gap: 0.75rem;
+    min-width: 0;
+    grid-template-columns: none;
+  }
+
+  .board-colhead {
+    display: none;
+  }
+
+  .board-row-card {
+    display: grid;
+    grid-column: auto;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+    align-items: start;
+    padding-block: 0.875rem;
+  }
+
+  .board-cell-rank {
+    grid-column: 1;
+    grid-row: 1;
+    padding-top: 0.125rem;
+  }
+
+  .board-cell-repo {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .board-row-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.75rem;
+    row-gap: 0.35rem;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+  }
+
+  .board-cell-growth {
+    flex: 1 1 100%;
+    margin-top: 0.15rem;
+  }
+
+  .board-cell-growth .text-base {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .board-cell-actions {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-content: stretch;
+  }
+
+  .board-row-card > [data-summary] {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
 }
 
 /* —— Data-desk motion (restrained) —— */

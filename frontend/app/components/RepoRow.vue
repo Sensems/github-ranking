@@ -114,9 +114,9 @@ const rankAccentClass = computed(() => {
     :class="rankAccentClass"
     :data-rank="item.rank"
   >
-    <div class="font-semibold tabular-nums text-primary">{{ rankLabel }}</div>
+    <div class="board-cell-rank font-semibold tabular-nums text-primary">{{ rankLabel }}</div>
 
-    <div class="min-w-0">
+    <div class="board-cell-repo min-w-0">
       <a
         :href="item.html_url"
         target="_blank"
@@ -130,52 +130,54 @@ const rankAccentClass = computed(() => {
       </p>
     </div>
 
-    <div class="flex min-w-0 items-center gap-1.5 text-muted-foreground">
-      <span
-        class="inline-block size-2 shrink-0 rounded-full"
-        :style="{ backgroundColor: languageColor(item.language) }"
-        aria-hidden="true"
-      />
-      <span class="truncate">{{ display(item.language) }}</span>
-    </div>
-
-    <div class="flex items-center gap-1 tabular-nums text-foreground">
-      <span class="text-[var(--star)]" aria-hidden="true">★</span>
-      {{ fmt(item.stars) }}
-    </div>
-
-    <div class="tabular-nums text-foreground">{{ fmt(item.forks) }}</div>
-    <div class="tabular-nums text-foreground">{{ display(item.open_issues) }}</div>
-    <div class="tabular-nums text-muted-foreground">{{ fmtDate(item.pushed_at) }}</div>
-
-    <div v-if="growthKey" data-testid="growth-cell" class="min-w-0">
-      <div
-        class="text-base font-semibold tabular-nums"
-        :class="
-          (growthValue ?? 0) >= 0 ? 'text-growth-positive' : 'text-growth-negative'
-        "
-      >
-        {{ fmtSigned(growthValue) }}
-      </div>
-      <div
-        v-if="growthValue != null"
-        class="mt-1 h-1.5 w-full max-w-[6rem] overflow-hidden rounded-full bg-muted"
-      >
-        <div
-          data-testid="growth-bar"
-          class="h-full rounded-full bg-primary"
-          :style="{ width: `${growthBarWidth}%` }"
+    <div class="board-row-meta">
+      <div class="board-cell-lang flex min-w-0 items-center gap-1.5 text-muted-foreground">
+        <span
+          class="inline-block size-2 shrink-0 rounded-full"
+          :style="{ backgroundColor: languageColor(item.language) }"
+          aria-hidden="true"
         />
+        <span class="truncate">{{ display(item.language) }}</span>
+      </div>
+
+      <div class="board-cell-stars flex items-center gap-1 tabular-nums text-foreground">
+        <span class="text-[var(--star)]" aria-hidden="true">★</span>
+        {{ fmt(item.stars) }}
+      </div>
+
+      <div class="board-cell-forks tabular-nums text-foreground">{{ fmt(item.forks) }}</div>
+      <div class="board-cell-issues tabular-nums text-foreground">{{ display(item.open_issues) }}</div>
+      <div class="board-cell-pushed tabular-nums text-muted-foreground">{{ fmtDate(item.pushed_at) }}</div>
+
+      <div v-if="growthKey" data-testid="growth-cell" class="board-cell-growth min-w-0">
+        <div
+          class="text-base font-semibold tabular-nums"
+          :class="
+            (growthValue ?? 0) >= 0 ? 'text-growth-positive' : 'text-growth-negative'
+          "
+        >
+          {{ fmtSigned(growthValue) }}
+        </div>
+        <div
+          v-if="growthValue != null"
+          class="mt-1 h-1.5 w-full max-w-[6rem] overflow-hidden rounded-full bg-muted"
+        >
+          <div
+            data-testid="growth-bar"
+            class="h-full rounded-full bg-primary"
+            :style="{ width: `${growthBarWidth}%` }"
+          />
+        </div>
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-end gap-2">
+    <div class="board-cell-actions flex flex-wrap items-center justify-end gap-2">
       <Button
         type="button"
         size="sm"
         data-testid="summary-action"
         :variant="expanded && summary ? 'default' : 'outline'"
-        class="h-8"
+        class="h-8 max-md:min-h-10 max-md:flex-1"
         :class="
           expanded && summary
             ? ''
@@ -186,7 +188,7 @@ const rankAccentClass = computed(() => {
       >
         {{ summaryActionLabel }}
       </Button>
-      <Button as-child variant="outline" size="sm" class="h-8">
+      <Button as-child variant="outline" size="sm" class="h-8 max-md:min-h-10 max-md:flex-1">
         <a :href="item.html_url" target="_blank" rel="noopener">查看仓库 →</a>
       </Button>
     </div>

@@ -4,13 +4,13 @@ const emit = defineEmits<{ (e: 'update:modelValue', value: string): void }>()
 </script>
 
 <template>
-  <div>
+  <div class="w-[calc(50%-0.25rem)] sm:w-auto">
     <label class="sr-only" for="board-language">语言筛选</label>
     <Select
       :model-value="modelValue || 'all'"
       @update:model-value="(value) => emit('update:modelValue', value === 'all' ? '' : String(value))"
     >
-      <SelectTrigger id="board-language" class="h-8 w-32 px-2.5 py-1 text-xs">
+      <SelectTrigger id="board-language" class="h-8 w-full px-2.5 py-1 text-xs sm:w-32 max-md:min-h-10">
         <SelectValue placeholder="全部语言" />
       </SelectTrigger>
       <SelectContent>

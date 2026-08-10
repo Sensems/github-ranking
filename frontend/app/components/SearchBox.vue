@@ -11,7 +11,7 @@ defineEmits<{ (e: 'update:modelValue', value: string): void }>()
       :model-value="modelValue"
       type="search"
       placeholder="搜索项目/关键词"
-      class="h-8 w-full px-2.5 py-1 text-xs"
+      class="h-8 w-full px-2.5 py-1 text-xs max-md:min-h-10"
       @update:model-value="$emit('update:modelValue', String($event))"
     />
   </div>

@@ -55,7 +55,7 @@ onMounted(() => {
           GitHub Star 趋势榜
         </NuxtLink>
 
-        <div class="min-w-0 flex-1 overflow-x-auto">
+        <div class="min-w-0 flex-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <LeaderboardTabs />
         </div>
 

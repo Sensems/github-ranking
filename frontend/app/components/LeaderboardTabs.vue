@@ -24,11 +24,11 @@ function preserveQuery(to: string) {
 
 <template>
   <nav aria-label="榜单切换" class="min-w-0">
-    <ul class="flex flex-wrap items-center gap-1 sm:gap-2">
-      <li v-for="tab in tabs" :key="tab.to">
+    <ul class="flex flex-nowrap items-center gap-1 sm:gap-2">
+      <li v-for="tab in tabs" :key="tab.to" class="shrink-0">
         <NuxtLink
           :to="preserveQuery(tab.to)"
-          class="inline-flex h-10 items-center border-b-2 px-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          class="inline-flex h-10 items-center whitespace-nowrap border-b-2 px-2 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           :class="
             isActive(tab.to)
               ? 'border-primary text-foreground'

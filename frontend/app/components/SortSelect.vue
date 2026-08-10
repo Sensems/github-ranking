@@ -10,13 +10,13 @@ const growthLabel = computed(() =>
 </script>
 
 <template>
-  <div>
+  <div class="w-[calc(50%-0.25rem)] sm:w-auto">
     <label class="sr-only" for="board-sort">排序方式</label>
     <Select
       :model-value="modelValue"
       @update:model-value="$emit('update:modelValue', String($event))"
     >
-      <SelectTrigger id="board-sort" class="h-8 w-32 px-2.5 py-1 text-xs">
+      <SelectTrigger id="board-sort" class="h-8 w-full px-2.5 py-1 text-xs sm:w-32 max-md:min-h-10">
         <SelectValue placeholder="排序" />
       </SelectTrigger>
       <SelectContent>

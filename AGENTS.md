@@ -5,11 +5,11 @@
 - Do not migrate existing `data/` JSON/CSV history into Postgres; start from an empty database and re-accumulate via sync.
 - Growth ranking uses local daily snapshots (Approach A) on a reduced watch set—not a ~10k full pool and not GH Archive/BigQuery as the primary source.
 - Total board tracks Top 100 by stars; daily/weekly/monthly/yearly growth boards use the G2 watch set (Top 500 ∪ newcomers ∪ previous growth-board members); growth boards should default-sort by that window’s star growth.
-- Leaderboard UI is a horizontal row/table list (not a RepoCard grid): sticky toolbar with search + language + sort, and sticky column headers below it.
+- Leaderboard UI is a horizontal row/table list (not a RepoCard grid): sticky toolbar with compact search + language + sort controls, sticky column headers aligned to the row grid, top-3 rows with accent borders and inter-row spacing, and 概况 as a borderless block with a subtle background.
 - Keep the product name「GitHub Star 趋势榜」(not RepoRank); total board shows screenshot-style fields, while growth boards additionally show the matching window’s star growth.
 - Repo AI summaries are on-demand only: no default/batch summary in daily sync; when a summary exists show it inline on the board, otherwise show a generate button that calls the API and persists to the database.
-- Frontend redesign direction: dense data-console row layout—dual theme with dark + neon-green primary and a light companion mode (not light-only); high information density, not a marketing/landing hero layout.
-- Frontend interactions should stay restrained and utilitarian: subtle stagger/fade motion, sticky filter/column chrome for scan efficiency, and `prefers-reduced-motion` support.
+- Frontend redesign direction: dense data-console row layout—dual theme with dark + neon-green primary and a light companion mode (not light-only); high information density, not a marketing/landing hero layout; adapt the same row/table board for mobile rather than a second card-grid layout.
+- Frontend interactions should stay restrained and utilitarian: subtle stagger/fade motion, sticky filter/column chrome for scan efficiency, `prefers-reduced-motion` support, and a back-to-top control fixed at the bottom-right that appears after scrolling past one viewport.
 - Prefer design-system-first UI rollout: land shadcn-vue `ui/*` primitives before restyling business components; phase-1 set is button, input, select, badge, card, tabs, separator, skeleton, alert (no dialog/dropdown/sheet yet); board rows use a dedicated row/table component rather than card-grid shells.
 
 ## Learned Workspace Facts
@@ -18,8 +18,8 @@
 - Target persistence is PostgreSQL (`github-ranking`, `public` schema); store only `DATABASE_URL` (and related secrets) in environment or Actions secrets—never commit connection strings or credentials.
 - Target runtime split: Actions sync/backfill write Postgres only; Nuxt SSR is deployed manually on the existing server (no Actions SSH deploy, no GitHub Pages).
 - Shared schema lives in idempotent SQL under `db/migrations/`; the Python pipeline uses psycopg (`db.py`); `stage` and file-backed `data/` are no longer the source of truth.
-- Nuxt reads Postgres via `pg` with runtime config (`NUXT_DATABASE_URL` / `DATABASE_URL`); deploy rsyncs `.output/` contents so the process entry is `server/index.mjs`.
+- Nuxt reads Postgres via `pg` with runtime config (`NUXT_DATABASE_URL` / `DATABASE_URL`) and listen port from env (`PORT`); production runs under PM2 via `deploy/ecosystem.config.cjs` (entry `server/index.mjs`); rebuild/reload with `deploy/one-click.sh`.
 - Only the G2 watch set receives daily snapshots; five precomputed `leaderboards` rows are served by Nitro without recomputing growth on request.
 - Sync persists `open_issues` / `pushed_at` from GitHub and no longer batch-refreshes README or AI summaries; missing card fields may show as "—" until Actions fills them.
-- Board reads may join existing Chinese summaries for inline display; missing summaries still use on-demand Nitro GET/POST routes and are written to the database.
+- Board「概况」comes from `summaries.summary` JSONB (not GitHub `description`); board reads may join existing Chinese summaries for inline display, and missing summaries still use on-demand Nitro GET/POST routes written back to the database.
 - Frontend UI stack is Nuxt 3 + Tailwind v4 + shadcn-vue; primitives live under `frontend/app/components/ui/`, board presentation is moving to row/table components with sticky toolbar/headers, and dual-theme tokens live in `frontend/app/assets/css/main.css`.
