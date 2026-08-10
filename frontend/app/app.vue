@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue'
 import { useAppColorMode } from '~/composables/useColorMode'
 import { useBoardGeneratedAt } from '~/composables/useBoardGeneratedAt'
 import { formatGeneratedAt } from '~/utils/boardMeta'
+import logoUrl from '~/assets/logo.png'
 
 const { mode, toggle, applyStored } = useAppColorMode()
 const generatedAt = useBoardGeneratedAt()
@@ -40,7 +41,7 @@ onMounted(() => {
           class="flex shrink-0 items-center gap-2 text-base font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-lg"
         >
           <img
-            src="/logo.png"
+            :src="logoUrl"
             alt=""
             width="20"
             height="20"
