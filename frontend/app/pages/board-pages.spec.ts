@@ -24,7 +24,7 @@ describe.each(boards)('$file', ({ file, type, title }) => {
     expect(page).toContain(':board-type="boardType"')
     expect(page).toContain(':payload="payload"')
     expect(page).toContain(':error="error"')
-    expect(page).toContain('BOARD_META')
+    expect(page).toContain('useBoardSeo(boardType, payload.items)')
     expect(title.length).toBeGreaterThan(0)
   })
 })

@@ -20,6 +20,10 @@ export default defineNuxtConfig({
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         { name: 'description', content: 'GitHub 开源项目 Star 趋势排行榜' },
       ],
+      link: [
+        { rel: 'icon', type: 'image/png', href: '/logo.png' },
+        { rel: 'apple-touch-icon', href: '/logo.png' },
+      ],
     },
   },
   runtimeConfig: {
@@ -30,13 +34,17 @@ export default defineNuxtConfig({
     xfyunBaseUrl: '',
     xfyunModel: '',
     public: {
-      siteUrl: process.env.SITE_URL || 'https://github-trend.example.com',
+      // Prefer NUXT_PUBLIC_SITE_URL at runtime; SITE_URL also accepted at build time.
+      siteUrl:
+        process.env.NUXT_PUBLIC_SITE_URL ||
+        process.env.SITE_URL ||
+        'https://github-trend.example.com',
     },
   },
 
   nitro: {
     prerender: {
-      routes: ['/sitemap.xml'],
+      routes: ['/sitemap.xml', '/robots.txt'],
     },
   },
 })

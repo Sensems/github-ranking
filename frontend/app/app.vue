@@ -39,19 +39,14 @@ onMounted(() => {
           to="/"
           class="flex shrink-0 items-center gap-2 text-base font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-lg"
         >
-          <svg
-            class="size-5 text-primary"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M3 17l6-6 4 4 8-8" />
-            <path d="M14 7h7v7" />
-          </svg>
+          <img
+            src="/logo.png"
+            alt=""
+            width="20"
+            height="20"
+            class="size-5 shrink-0 rounded-sm"
+            decoding="async"
+          />
           GitHub Star 趋势榜
         </NuxtLink>
 
