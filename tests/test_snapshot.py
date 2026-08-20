@@ -5,6 +5,12 @@ from unittest.mock import MagicMock
 import db
 
 
+def test_prune_snapshots_skips_when_retention_disabled():
+    conn = MagicMock()
+    assert db.prune_snapshots(conn, retention_days=0) == 0
+    conn.cursor.assert_not_called()
+
+
 def test_prune_snapshots_deletes_old_rows():
     conn = MagicMock()
     cur = MagicMock()

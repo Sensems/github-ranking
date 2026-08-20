@@ -17,7 +17,23 @@ GROWTH_BOARD_TYPES = ("daily", "weekly", "monthly", "yearly")
 def connect() -> "psycopg.Connection":
     import psycopg
 
-    return psycopg.connect(config.DATABASE_URL)
+    return psycopg.connect(config.DATABASE_URL, connect_timeout=config.DB_CONNECT_TIMEOUT_S)
+
+
+def verify_connection() -> None:
+    """Fail fast when DATABASE_URL is missing or Postgres is unreachable."""
+    if not config.DATABASE_URL:
+        raise SystemExit("DATABASE_URL is required")
+    try:
+        with connect() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                if cur.fetchone() is None:
+                    raise SystemExit("Database connection check failed: SELECT 1 returned no row")
+    except SystemExit:
+        raise
+    except Exception as exc:
+        raise SystemExit(f"Database connection failed: {exc}") from exc
 
 
 def _iso(value: date | str | None) -> str | None:
@@ -137,6 +153,8 @@ def load_history(conn, repo_id: int) -> list[dict]:
 
 
 def prune_snapshots(conn, retention_days: int = HISTORY_RETENTION_DAYS) -> int:
+    if retention_days <= 0:
+        return 0
     with conn.cursor() as cur:
         cur.execute(
             "DELETE FROM snapshots WHERE date < CURRENT_DATE - %s::integer",

@@ -5,7 +5,7 @@
 ## 核心能力
 
 - **五类 Top 100 榜单**：总 Star、日增、周增、月增、年增
-- **本地增长快照**：只跟踪观察集，保留约 400 天，不依赖 GH Archive / BigQuery
+- **本地增长快照**：只跟踪观察集，**永久保留**，不依赖 GH Archive / BigQuery
 - **按需中文概况**：用户点击生成后调用讯飞服务，结果写入 PostgreSQL；已有概况随榜单直接返回
 - **SSR 数据台界面**：Nuxt 3 + Nitro + Tailwind CSS v4 + shadcn-vue
 - **数据库单一事实源**：PostgreSQL 保存仓库、快照、概况和预计算榜单
@@ -13,11 +13,11 @@
 ## 当前架构
 
 ```text
-GitHub Search / Repository API / Stargazers API
+GitHub Search / Repository API
                         │
                         ▼
 GitHub Actions
-  08:00 migrate → sync        08:30 migrate → backfill
+  08:00 migrate → sync（每日快照 → 增长计算）
                         │
                         │ psycopg（pipeline 读写）
                         ▼
@@ -58,7 +58,7 @@ Users ──► nginx / TLS ──► Nuxt Nitro SSR
 - 时间窗口：日 `1` 天、周 `7` 天、月 `30` 天、年 `365` 天
 - 增长榜参与门槛：Star ≥ 1000，且仓库年龄不小于对应窗口
 - sync 计算后整行覆盖 `leaderboards` 中的五个预计算榜单；Nitro 请求时不重新计算增长
-- 冷启动后各增长榜会随每日快照逐步出现；年榜需要长期积累或由 backfill 补充约 365 天前的锚点
+- 冷启动后各增长榜会随每日快照逐步出现；**年榜需约 365 天快照积累**（GitHub 已限制 Stargazers API，G3 backfill 已停用）
 
 ### 按需概况
 
@@ -93,7 +93,7 @@ SQL 迁移位于 `db/migrations/`，是 Python 与 Nuxt 共用的 schema 来源�
 │  ├─ growth.py             增长计算与榜单生成
 │  ├─ db.py                 PostgreSQL 领域操作
 │  ├─ migrate.py            SQL 迁移执行器
-│  └─ main.py               migrate / sync / backfill 入口
+│  └─ main.py               migrate / sync 入口（backfill 已停用）
 ├─ db/migrations/           幂等 SQL 迁移
 ├─ tests/                   Python pytest
 ├─ frontend/                Nuxt 3 + Nitro SSR
@@ -102,7 +102,7 @@ SQL 迁移位于 `db/migrations/`，是 Python 与 Nuxt 共用的 schema 来源�
 │  ├─ app/components/ui/    shadcn-vue 基础组件
 │  ├─ app/server/api/       榜单、健康检查、按需概况 API
 │  └─ app/server/utils/     pg 连接与概况服务
-├─ .github/workflows/       Daily Sync / Backfill History
+├─ .github/workflows/       Daily Sync（Backfill History 已停用）
 ├─ deploy/                  rsync 脚本与 nginx 示例
 └─ docs/                    部署、运维与验收文档
 ```
@@ -114,7 +114,7 @@ SQL 迁移位于 `db/migrations/`，是 Python 与 Nuxt 共用的 schema 来源�
 - Python 3.12
 - Node.js 22（推荐）
 - PostgreSQL，数据库名建议为 `github-ranking`、schema 为 `public`
-- 可访问 GitHub API 的网络；sync / backfill 推荐配置 PAT
+- 可访问 GitHub API 的网络；sync 推荐配置 PAT
 
 > 不要提交真实数据库 URL、GitHub Token 或讯飞密钥。
 
@@ -142,10 +142,10 @@ python scripts/main.py migrate
 python scripts/main.py sync
 ```
 
-可选回溯：
+可选回溯（**已停用**，GitHub Stargazers API 限制；年榜靠 sync 快照积累）：
 
 ```bash
-python scripts/main.py backfill
+# python scripts/main.py backfill  # 勿用 — 第三方仓库会 403
 ```
 
 ### 3. 启动 Nuxt
@@ -178,7 +178,7 @@ npm run dev
 | `GH_TOKEN` | Actions 是 | Actions Secret，workflow 映射为 `GITHUB_TOKEN` |
 | `NOTIFY_WEBHOOK` | 否 | Daily Sync 失败通知 |
 
-Actions 中不需要配置讯飞变量；sync / backfill 不生成概况。
+Actions 中不需要配置讯飞变量；sync 不生成概况。
 
 ### Nuxt Nitro
 
@@ -212,7 +212,7 @@ Actions 中不需要配置讯飞变量；sync / backfill 不生成概况。
 # Python
 python scripts/main.py migrate
 python scripts/main.py sync
-python scripts/main.py backfill
+# backfill 已停用（GitHub Stargazers API 限制）；年榜靠 sync 快照积累
 python -m pytest
 
 # Frontend
@@ -226,7 +226,7 @@ npm run preview
 ## 自动任务与部署
 
 - `Daily Sync`：每天 UTC `00:00`（北京时间 `08:00`）执行 migrate + sync
-- `Backfill History`：每天 UTC `00:30`（北京时间 `08:30`）执行 migrate + backfill
+- `Backfill History`：**已停用**（GitHub 2026-06 起 Stargazers API 仅协作者可访问；年榜改靠 sync 快照约 365 天积累）
 - 两个 workflow 使用不同 concurrency group，可能重叠；快照写入和榜单替换均设计为幂等
 - GitHub-hosted runner 必须能访问 PostgreSQL；可选公网防火墙、self-hosted runner 或隧道 / VPN
 - 生产前端由运维手动执行 `npm ci && npm run build`，同步 `frontend/.output/` 内容并重启 Nitro
@@ -249,7 +249,7 @@ Python 测试覆盖观察集、增长计算、迁移和管道流程；Vitest 覆
 ## 文档
 
 - [部署文档](docs/DEPLOY.md) — 网络前置、数据库权限、PM2 与手动部署
-- [日常运维](docs/OPERATIONS.md) — sync、backfill、故障恢复与数据检查
+- [日常运维](docs/OPERATIONS.md) — sync、故障恢复与数据检查
 - [验收记录](docs/ACCEPTANCE.md) — 当前验收项和上线检查
 - [PostgreSQL + Nitro 架构设计](docs/superpowers/specs/2026-08-05-postgres-nitro-architecture-design.md) — 初始设计记录；当前运行方式以本 README 和部署文档为准
 - [shadcn-vue 前端设计](docs/superpowers/specs/2026-08-06-shadcn-vue-frontend-design.md)

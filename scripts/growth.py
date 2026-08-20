@@ -23,10 +23,12 @@ def nearest_snapshot(history: list[dict], target: date) -> Optional[dict]:
 
 
 def compute_growth(stars: int, history: list[dict], today: date) -> dict[str, Optional[int]]:
+    # Current stars already reflect today; do not use today's snapshot as the anchor.
+    past = [row for row in history if parse_date(row["date"]) < today]
     growth: dict[str, Optional[int]] = {}
     for name, days in WINDOWS.items():
         target = today - timedelta(days=days)
-        row = nearest_snapshot(history, target)
+        row = nearest_snapshot(past, target)
         growth[name] = None if row is None else stars - row["stars"]
     return growth
 

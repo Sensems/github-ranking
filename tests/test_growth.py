@@ -27,6 +27,14 @@ def test_compute_growth_daily_and_weekly():
     assert g["monthly"] is None  # 30 天前无快照
 
 
+def test_compute_growth_daily_does_not_use_today_snapshot():
+    """Regression: today's snapshot must not anchor daily growth (would always be 0)."""
+    h = history(("2026-08-10", 1000), ("2026-08-19", 2000))
+    g = growth.compute_growth(2000, h, date(2026, 8, 19))
+    assert g["daily"] is None  # no snapshot within ±3 of Aug 18 except today
+    assert g["weekly"] == 1000  # Aug 12 target → Aug 10 snapshot
+
+
 def test_eligible_filters_by_stars_and_age():
     young = {"stars": 2000, "created_at": "2026-07-20T00:00:00Z"}
     low = {"stars": 500, "created_at": "2020-01-01T00:00:00Z"}

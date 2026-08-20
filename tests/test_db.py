@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import config
 import db
 
 integration = pytest.mark.skipif(
@@ -148,3 +149,36 @@ def test_load_summary_returns_none_when_missing():
     conn, cur = _mock_conn(fetchone=None)
 
     assert db.load_summary(conn, 99) is None
+
+
+def test_verify_connection_requires_database_url(monkeypatch):
+    monkeypatch.setattr(config, "DATABASE_URL", "")
+    with pytest.raises(SystemExit, match="DATABASE_URL is required"):
+        db.verify_connection()
+
+
+def test_verify_connection_wraps_connect_errors(monkeypatch):
+    monkeypatch.setattr(config, "DATABASE_URL", "postgresql://invalid/db")
+
+    def boom():
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(db, "connect", boom)
+    with pytest.raises(SystemExit, match="Database connection failed: connection refused"):
+        db.verify_connection()
+
+
+def test_verify_connection_runs_select_one(monkeypatch):
+    monkeypatch.setattr(config, "DATABASE_URL", "postgresql://test/db")
+    conn = MagicMock()
+    cur = MagicMock()
+    cur.fetchone.return_value = (1,)
+    conn.cursor.return_value.__enter__ = MagicMock(return_value=cur)
+    conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    conn.__enter__ = MagicMock(return_value=conn)
+    conn.__exit__ = MagicMock(return_value=False)
+    monkeypatch.setattr(db, "connect", lambda: conn)
+
+    db.verify_connection()
+
+    cur.execute.assert_called_once_with("SELECT 1")

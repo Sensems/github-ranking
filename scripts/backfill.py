@@ -1,4 +1,7 @@
-"""365 天历史回溯：对进入榜单 Top 100 的仓库补算一年前 star 数。"""
+"""365 天历史回溯（已停用）：GitHub 2026-06 起 Stargazers API 仅协作者可访问，第三方仓库会 403。
+
+保留 CLI 与单测供参考；Actions workflow 已改为 no-op。年榜改靠 Daily Sync 快照约 365 天积累。
+"""
 from __future__ import annotations
 
 from datetime import date, timedelta

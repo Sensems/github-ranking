@@ -13,7 +13,7 @@
 | 榜单页面 | 5 页 SSR 可访问；筛选/搜索/排序正常 | ✅/⏳ | `npm run build` + `npm run preview` 或 dev |
 | 部署 | Daily Sync 成功后 SSH 部署 Nitro；失败保留 DB 中上次数据 | ⏳ | 需 `DEPLOY_*` + 服务器 systemd/pm2 |
 | 告警 | 人为失败一次，Webhook 送达 | ⏳ | 流程见 docs/DEPLOY.md §3 |
-| 年榜回溯 | 上线 2 周内年榜 Top 100 覆盖 ≥ 80% | ⏳ | backfill 写 `snapshots`；需线上积累 |
+| 年榜回溯 | 上线约 365 天后年榜逐步填满 | ⏳ | G3 backfill 已停用；靠 Daily Sync 快照积累 |
 
 ## 冷启动验收（空库 → 首次 sync）
 

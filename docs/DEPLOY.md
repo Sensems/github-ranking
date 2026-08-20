@@ -4,8 +4,7 @@
 
 ```
 GitHub Actions（每日 08:00 北京时间）
-  → migrate → sync（写 Postgres）
-  → backfill：migrate → 小批量回溯 365 天锚点（写 Postgres）
+  → migrate → sync（写 Postgres；每日快照供增长榜计算）
 
 前端部署：人工 / 自有脚本（本仓库不通过 Actions SSH 部署）
   → npm ci && npm run build → 拷贝 frontend/.output/ + ecosystem.config.cjs → PM2 startOrReload
@@ -155,7 +154,7 @@ python scripts/main.py sync
 
 - 五个 API `/api/leaderboards/{total,daily,weekly,monthly,yearly}` 均可访问
 - **总榜 / 日榜 / 周榜** 应有数据；**月榜** 可能较 sparse
-- **年榜** 在首日通常条目很少或为空（需多日快照 + backfill 365 天锚点），UI 显示「数据积累中」属正常
+- **年榜** 在首日通常条目很少或为空（需约 **365 天** Daily Sync 快照积累；G3 backfill 已停用），UI 显示「数据积累中」属正常
 - 第二次 sync 起，watch set 会合并前一日增长榜成员，行为逐渐稳定
 
 然后手动触发 **Daily Sync** workflow，确认 migrate → sync 全绿（**不含**前端部署）。
@@ -204,5 +203,5 @@ ssh user@host 'cd /var/www/github-ranking && pm2 startOrReload ecosystem.config.
 | Sync 连不上库 | runner → Postgres 网络、`DATABASE_URL`、防火墙、TLS |
 | 部署后 502 | Node 是否监听 `PORT`（默认 3000）；`pm2 status` / `pm2 logs github-ranking` |
 | API 5xx | 服务器进程是否配置了 `NUXT_DATABASE_URL` / `DATABASE_URL`；Nuxt 角色是否有榜单读取及 `readmes` / `summaries` 所需权限；入口是否为 `node server/index.mjs`；Postgres 是否可达 |
-| 年榜长期为空 | 正常冷启动；确认 backfill workflow 在跑且 `repos.backfilled_365` 在增长 |
+| 年榜长期 sparse | 正常冷启动；确认 Daily Sync 持续成功且 `snapshots` 在增长（约 365 天后年榜可用） |
 | 仍看到 GitHub Pages | 产品路径已切换 SSR；Pages 可关闭或仅作镜像，非主路径 |

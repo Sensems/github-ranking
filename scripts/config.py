@@ -30,6 +30,7 @@ def normalize_database_url(url: str) -> str:
 
 # Database
 DATABASE_URL = normalize_database_url(os.environ.get("DATABASE_URL", ""))
+DB_CONNECT_TIMEOUT_S = int(os.environ.get("DB_CONNECT_TIMEOUT_S", "15"))
 
 # GitHub
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "")
@@ -45,8 +46,8 @@ LEADERBOARD_SIZE = 100
 TOLERANCE_DAYS = 3
 WINDOWS = {"daily": 1, "weekly": 7, "monthly": 30, "yearly": 365}
 
-# 历史
-HISTORY_RETENTION_DAYS = 400
+# 历史快照保留：0 = 不 prune，永久保留
+HISTORY_RETENTION_DAYS = 0
 
 # README / AI 摘要
 README_TRUNCATE_CHARS = 30_000

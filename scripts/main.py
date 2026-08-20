@@ -21,8 +21,7 @@ from pool import build_watch_set
 
 
 def sync() -> None:
-    if not DATABASE_URL:
-        raise SystemExit("DATABASE_URL is required")
+    db.verify_connection()
 
     with db.connect() as conn:
         print("[1/4] migrate")
@@ -103,17 +102,21 @@ def backfill() -> None:
 
 
 def migrate_cmd() -> None:
-    if not DATABASE_URL:
-        raise SystemExit("DATABASE_URL is not set")
+    db.verify_connection()
 
     with db.connect() as conn:
         applied = migrate.migrate_up(conn)
     print(f"Applied {applied} migration(s)")
 
 
+def check_db() -> None:
+    db.verify_connection()
+    print("database ok")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="GitHub Star Trend pipeline")
-    parser.add_argument("command", choices=["sync", "backfill", "migrate"])
+    parser.add_argument("command", choices=["sync", "backfill", "migrate", "check-db"])
     args = parser.parse_args()
     if args.command == "sync":
         sync()
@@ -121,6 +124,8 @@ def main() -> None:
         backfill()
     elif args.command == "migrate":
         migrate_cmd()
+    elif args.command == "check-db":
+        check_db()
 
 
 if __name__ == "__main__":

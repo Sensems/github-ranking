@@ -16,7 +16,7 @@
 
 - github-ranking is a GitHub star trend leaderboard: Python pipeline under `scripts/`, Nuxt frontend under `frontend/`, historically file-backed under `data/` and published as a static site.
 - Target persistence is PostgreSQL (`github-ranking`, `public` schema); store only `DATABASE_URL` (and related secrets) in environment or Actions secrets—never commit connection strings or credentials.
-- Target runtime split: Actions sync/backfill write Postgres only; Nuxt SSR is deployed manually on the existing server (no Actions SSH deploy, no GitHub Pages).
+- Target runtime split: Actions sync writes Postgres only (Backfill History disabled since GitHub Stargazers API restriction); Nuxt SSR is deployed manually on the existing server (no Actions SSH deploy, no GitHub Pages).
 - Shared schema lives in idempotent SQL under `db/migrations/`; the Python pipeline uses psycopg (`db.py`); `stage` and file-backed `data/` are no longer the source of truth.
 - Nuxt reads Postgres via `pg` with runtime config (`NUXT_DATABASE_URL` / `DATABASE_URL`) and listen port from env (`PORT`); production runs under PM2 via `deploy/ecosystem.config.cjs` (entry `server/index.mjs`); rebuild/reload with `deploy/one-click.sh`.
 - Only the G2 watch set receives daily snapshots; five precomputed `leaderboards` rows are served by Nitro without recomputing growth on request.

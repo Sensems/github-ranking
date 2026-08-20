@@ -10,6 +10,17 @@ import migrate
 import summary as summary_mod
 
 
+def test_check_db_calls_verify(monkeypatch):
+    called = {"ok": False}
+
+    def fake_verify():
+        called["ok"] = True
+
+    monkeypatch.setattr(db, "verify_connection", fake_verify)
+    main.check_db()
+    assert called["ok"] is True
+
+
 def test_cli_choices_exclude_stage(monkeypatch):
     import argparse
 
@@ -31,7 +42,7 @@ def test_cli_choices_exclude_stage(monkeypatch):
     monkeypatch.setattr(argparse, "ArgumentParser", FakeParser)
     monkeypatch.setattr(main, "sync", lambda: None)
     main.main()
-    assert captured["choices"] == ["sync", "backfill", "migrate"]
+    assert captured["choices"] == ["sync", "backfill", "migrate", "check-db"]
     assert "stage" not in captured["choices"]
 
 
@@ -148,13 +159,14 @@ def test_sync_end_to_end_with_fakes(monkeypatch):
 
 
 def test_sync_requires_database_url(monkeypatch):
-    monkeypatch.setattr(main, "DATABASE_URL", "")
+    monkeypatch.setattr(config, "DATABASE_URL", "")
     with pytest.raises(SystemExit, match="DATABASE_URL"):
         main.sync()
 
 
 def test_sync_does_not_snapshot_fallen_out_repos(monkeypatch):
     """Historical repos outside Top500∪newcomers∪previous must not get today's snapshot."""
+    monkeypatch.setattr(config, "DATABASE_URL", "postgresql://test/db")
     monkeypatch.setattr(main, "DATABASE_URL", "postgresql://test/db")
 
     store = {

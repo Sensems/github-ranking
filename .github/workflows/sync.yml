@@ -23,6 +23,11 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
 
+      - name: Check database connectivity
+        run: python scripts/main.py check-db
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Migrate schema
         run: python scripts/main.py migrate
         env:
@@ -36,8 +41,19 @@ jobs:
 
       - name: Notify on failure
         if: failure()
+        env:
+          NOTIFY_WEBHOOK: ${{ secrets.NOTIFY_WEBHOOK }}
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          curl -s -X POST "${{ secrets.NOTIFY_WEBHOOK }}" \
+          echo "::error::Daily Sync failed. See run: $RUN_URL"
+          if [ -z "${NOTIFY_WEBHOOK}" ]; then
+            echo "NOTIFY_WEBHOOK is not configured; webhook skipped."
+            exit 0
+          fi
+          HTTP_CODE=$(curl -sS -o /tmp/notify-body.txt -w "%{http_code}" -X POST "${NOTIFY_WEBHOOK}" \
             -H 'Content-Type: application/json' \
-            -d "{\"text\":\"GitHub Star 趋势榜每日同步失败: $RUN_URL\"}"
+            -d "{\"text\":\"GitHub Star 趋势榜每日同步失败: $RUN_URL\"}")
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::warning::Notify webhook returned HTTP ${HTTP_CODE}"
+            cat /tmp/notify-body.txt || true
+          fi

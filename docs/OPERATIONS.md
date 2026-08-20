@@ -3,11 +3,11 @@
 ## 数据更新节奏
 
 - 每日 **08:00 北京时间** `sync.yml` 自动运行（UTC 00:00 cron，可能延迟 15–30 分钟）
-  - `migrate` → `sync`（写 Postgres）→ 构建 Nuxt → SSH 部署
-- 每日 **08:30 北京时间** `backfill.yml` 自动运行小批量 365 天锚点回溯（仅写 DB）
-- 失败自动重试 1 次；仍失败发送 `NOTIFY_WEBHOOK` 告警
-- 可用 `workflow_dispatch` 手动补跑任意一次
-- `sync` 与 `backfill` 使用 **独立并发组**，可同时运行；快照按 `(repo_id, date)` upsert，榜单按 type 整行替换，设计上可重叠
+  - `migrate` → `sync`（写 Postgres）
+- **`Backfill History` 已停用**（2026-08）：GitHub 自 2026-06 起将 `/repos/{owner}/{repo}/stargazers` 限制为仓库 admin/协作者；Actions PAT 无法为第三方仓库补 365 天 star 锚点（403）。年榜改靠 **Daily Sync 每日快照自然积累**（约 365 天后可用）
+- 失败自动重试 1 次；仍失败发送 `NOTIFY_WEBHOOK` 告警（仅 sync）
+- 可用 `workflow_dispatch` 手动补跑 Daily Sync
+- 快照按 `(repo_id, date)` upsert，榜单按 type 整行替换
 
 ## 数据源说明（Postgres）
 
@@ -16,7 +16,7 @@
 | 表 | 用途 |
 |----|------|
 | `repos` | 观察集元数据 |
-| `snapshots` | 每日 star/fork 快照（约 400 天滚动保留） |
+| `snapshots` | 每日 star/fork 快照（永久保留，不再 prune） |
 | `readmes` | README 摘录（榜单候选） |
 | `summaries` | AI 摘要缓存 |
 | `leaderboards` | 预计算的五个榜单 JSON |
@@ -30,7 +30,9 @@
 | 现象 | 排查 |
 |------|------|
 | Search API 报 403 | Actions secret `GH_TOKEN`（映射为 `GITHUB_TOKEN`）过期或权限不足（需 public_repo 读权限） |
-| Sync 数据库错误 | `DATABASE_URL`、runner → Postgres 网络、migrate 是否成功 |
+| Backfill / Stargazers 403 | **预期行为**：GitHub 已限制 stargazers 列表为协作者可见；G3 backfill 已停用，勿手动跑 `main.py backfill` |
+| 年榜长期 sparse | 正常冷启动；需约 **365 天** Daily Sync 快照积累，无法再通过 API 回溯加速 |
+| Sync 数据库错误 | `DATABASE_URL`、runner → Postgres 网络；workflow 首步 `check-db` 会显式失败并告警 |
 | 按需 AI 摘要失败 | Nuxt 服务器进程的 `NUXT_XFYUN_API_KEY` / `NUXT_XFYUN_BASE_URL` / `NUXT_XFYUN_MODEL`（推荐），或运行时 `XFYUN_API_KEY` / `XFYUN_BASE_URL` / `XFYUN_MODEL` 回退值、额度及 DB 写权限（与 Actions sync 无关） |
 | 构建失败 | 前端依赖变化，检查 `npm ci` / `npm run build` 日志 |
 | 部署失败 | SSH 密钥、`DEPLOY_*`、远端目录权限、`DEPLOY_RESTART_CMD` 单元名 |
@@ -46,7 +48,7 @@
 | 单次 sync 失败 | 修复根因后 `workflow_dispatch` 重跑 Daily Sync；DB 保留上次成功写入的榜单 |
 | 部署失败但 sync 成功 | 手动重跑 deploy 或仅 re-run deploy 相关 job；数据已在 Postgres |
 | 数据库损坏 / 误删 | 从 Postgres 备份恢复（需自行配置 `pg_dump` 等）；**不**从 git 恢复 `data/` |
-| 需要全量重建 | 空库或 drop schema 后：`migrate` → `sync` → 等待 backfill 积累年榜 |
+| 需要全量重建 | 空库或 drop schema 后：`migrate` → `sync` → 等待每日快照积累年榜（约 365 天） |
 
 建议：对 `github-ranking` 库配置定期备份（cron + 异地存储）。
 

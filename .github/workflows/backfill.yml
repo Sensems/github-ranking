@@ -1,7 +1,11 @@
-name: Backfill History
+name: Backfill History (disabled)
+
+# Disabled 2026-08: GitHub restricted GET /repos/{owner}/{repo}/stargazers to repo
+# admins/collaborators only (https://github.blog/changelog/2026-06-30-upcoming-access-restrictions-to-public-api-endpoints-and-ui-views/).
+# G3 backfill cannot fetch third-party star timelines (403). Yearly board fills from daily sync snapshots (~365 days).
+# See docs/OPERATIONS.md
+
 on:
-  schedule:
-    - cron: "30 0 * * *"   # 每日小批量（UTC 00:30 = 北京时间 08:30）
   workflow_dispatch: {}
 
 concurrency:
@@ -12,23 +16,11 @@ permissions:
   contents: read
 
 jobs:
-  backfill:
+  disabled-notice:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -r requirements.txt
-
-      - name: Migrate schema
-        run: python scripts/main.py migrate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Run backfill
-        run: python scripts/main.py backfill
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Backfill is disabled
+        run: |
+          echo "::warning::Backfill History 已停用：GitHub Stargazers API 仅仓库协作者可访问，无法为第三方仓库补 365 天锚点。"
+          echo "年榜改由 Daily Sync 每日快照自然积累（约 365 天）。"
+          echo "详见 docs/OPERATIONS.md"
