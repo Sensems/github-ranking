@@ -114,6 +114,37 @@ def test_build_watch_set_refreshes_previous_only_stars(monkeypatch):
     assert result[7]["backfilled_365"] == "2025-06-01"
 
 
+def test_build_watch_set_skips_missing_previous_only_repo(monkeypatch):
+    """Deleted/private previous-only repos must not abort G2 construction."""
+    class FakeClient:
+        def top_repos_by_stars(self, limit):
+            return [raw_repo(1, "a/a", 5000)]
+
+        def search(self, query, per_page=100, page=1, **kwargs):
+            return {"items": []}
+
+        def get_repo_by_id(self, repo_id):
+            assert repo_id == 1358140812
+            return None
+
+    monkeypatch.setattr(pool, "fetch_newcomers", lambda client: {})
+    existing = {
+        1358140812: {
+            "repo_id": 1358140812,
+            "repo_name": "gone/repo",
+            "description": "deleted",
+            "stars": 800,
+            "forks": 1,
+            "language": "Python",
+            "html_url": "https://github.com/gone/repo",
+            "created_at": "2025-01-01T00:00:00Z",
+        },
+    }
+    result = pool.build_watch_set(FakeClient(), existing, previous_ids={1358140812})
+    assert 1358140812 not in result
+    assert 1 in result
+
+
 def test_build_watch_set_skips_previous_without_existing_metadata():
     class FakeClient:
         def top_repos_by_stars(self, limit):

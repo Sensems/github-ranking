@@ -60,12 +60,17 @@ class GitHubClient:
             time.sleep(self.search_retry_wait_s)
         raise last_exc  # pragma: no cover
 
-    def get_repo_by_id(self, repo_id: int) -> dict:
-        """Fetch current repository metadata (including stargazers_count) by numeric id."""
+    def get_repo_by_id(self, repo_id: int) -> Optional[dict]:
+        """Fetch current repository metadata (including stargazers_count) by numeric id.
+
+        Returns None when GitHub reports the repo as missing (deleted, private, or gone).
+        """
         resp = self.session.get(
             REPO_BY_ID_URL.format(repo_id=repo_id),
             headers=self.headers,
         )
+        if resp.status_code in (404, 410):
+            return None
         resp.raise_for_status()
         return resp.json()
 

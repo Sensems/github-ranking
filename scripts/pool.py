@@ -78,6 +78,10 @@ def build_watch_set(
             merged[rid] = dict(top[rid])
         else:
             # previous-only: refresh live stars/metadata before snapshotting
-            merged[rid] = to_repo_record(client.get_repo_by_id(rid))
+            raw = client.get_repo_by_id(rid)
+            if raw is None:
+                print(f"      skip missing repo {rid}")
+                continue
+            merged[rid] = to_repo_record(raw)
         _preserve_db_fields(merged[rid], existing.get(rid))
     return merged

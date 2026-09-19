@@ -120,6 +120,24 @@ def test_get_repo_by_id_fetches_repository_endpoint():
     assert result["stargazers_count"] == 1234
 
 
+def test_get_repo_by_id_returns_none_when_repo_missing():
+    class FakeSession:
+        def get(self, url, params=None, headers=None):
+            return FakeResponse({}, status_code=404)
+
+    client = gc.GitHubClient(session=FakeSession())
+    assert client.get_repo_by_id(1358140812) is None
+
+
+def test_get_repo_by_id_returns_none_when_repo_gone():
+    class FakeSession:
+        def get(self, url, params=None, headers=None):
+            return FakeResponse({}, status_code=410)
+
+    client = gc.GitHubClient(session=FakeSession())
+    assert client.get_repo_by_id(1) is None
+
+
 def test_fetch_readme_falls_back_to_lowercase():
     calls = []
 
